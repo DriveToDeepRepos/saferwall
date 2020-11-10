@@ -6,8 +6,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"io"
 	"log"
 	"os"
+	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -15,28 +18,33 @@ import (
 )
 
 const (
-	reAPIs = `(_Success_|WINBASEAPI|WINADVAPI)[\d\w\s\)\(,\[\]\!*+=&<>]+;`
+	// RegAPIs is a regex that extract API prototypes.
+	RegAPIs = `(_Success_|WINBASEAPI|WINADVAPI|NTSTATUS|_Must_inspect_result_|BOOLEAN)[\d\w\s\)\(,\[\]\!*+=&<>/]+;`
 
-	rePrototype = `(?P<Attr>WINBASEAPI|WINADVAPI) (?P<RetValType>[A-Z]+) (?P<CallConv>WINAPI|APIENTRY) (?P<ApiName>[a-zA-Z0-9]+)\((?P<Params>.*)\);`
+	RegProto = `(?P<Attr>WINBASEAPI|WINADVAPI)?( )?(?P<RetValType>[A-Z]+) (?P<CallConv>WINAPI|APIENTRY) (?P<ApiName>[a-zA-Z0-9]+)\((?P<Params>.*)\);`
 
-	reParams = `(?P<Annotation>_In_|_In_opt_|_Inout_opt_|_Out_|_Inout_|_Out_opt_|_Outptr_opt_|_Reserved_|_Out_writes_[\w(),+ *]+|_In_reads_[\w()]+) (?P<Type>[\w *]+) (?P<Name>[a-zA-Z0-9]+)`
+	RegApiParams = `(?P<Anno>_In_|_In_opt_|_Inout_opt_|_Out_|_Inout_|_Out_opt_|_Outptr_opt_|_Reserved_|_Out[\w(),+ *]+|_In[\w()]+) (?P<Type>[\w *]+) (?P<Name>[*a-zA-Z0-9]+)`
+
+	RegParam = `(, )_`
+
+	RegDllName = `req\.dll: (?P<DLL>[\w]+\.dll)`
 )
 
 // APIParam represents a paramter of a Win32 API.
 type APIParam struct {
-	Annotation string
-	Type       string
-	Name       string
+	Annotation string `json:"anno"`
+	Type       string `json:"type"`
+	Name       string `json:"name"`
 }
 
 // API represents information about a Win32 API.
 type API struct {
-	Attr        string     `json:"attribute"`         // Microsoft-specific attribute.
-	CallConv    string     `json:"callingConvention"` // Calling Convention.
-	Name        string     `json:"name"`              // Name of the API.
-	Params      []APIParam `json:"parameters"`        // API Arguments.
-	CountParams uint8      `json:"countParams"`       // Count of Params.
-	RetValType  string     `json:"returnValueType"`   // Return value type.
+	Attribute         string     `json:"attr"`        // Microsoft-specific attribute.
+	CallingConvention string     `json:"callConv"`    // Calling Convention.
+	Name              string     `json:"name"`        // Name of the API.
+	Params            []APIParam `json:"params"`      // API Arguments.
+	CountParams       uint8      `json:"countParams"` // Count of Params.
+	ReturnValueType   string     `json:"retVal"`      // Return value type.
 }
 
 func regSubMatchToMapString(regEx, s string) (paramsMap map[string]string) {
@@ -54,9 +62,9 @@ func regSubMatchToMapString(regEx, s string) (paramsMap map[string]string) {
 }
 
 func parseAPIParameter(params string) APIParam {
-	m := regSubMatchToMapString(reParams, params)
+	m := regSubMatchToMapString(RegApiParams, params)
 	apiParam := APIParam{
-		Annotation: m["Annotation"],
+		Annotation: m["Anno"],
 		Name:       m["Name"],
 		Type:       m["Type"],
 	}
@@ -64,12 +72,12 @@ func parseAPIParameter(params string) APIParam {
 }
 
 func parseAPI(apiPrototype string) API {
-	m := regSubMatchToMapString(rePrototype, apiPrototype)
+	m := regSubMatchToMapString(RegProto, apiPrototype)
 	api := API{
-		Attr:       m["Attr"],
-		CallConv:   m["CallConv"],
-		Name:       m["ApiName"],
-		RetValType: m["RetValType"],
+		Attribute:         m["Attr"],
+		CallingConvention: m["CallConv"],
+		Name:              m["ApiName"],
+		ReturnValueType:   m["RetValType"],
 	}
 
 	// Treat the VOID case.
@@ -78,13 +86,14 @@ func parseAPI(apiPrototype string) API {
 		return api
 	}
 
-	// Corder cases:
-	/*
-	 BOOL WINAPI ReadFile( _In_ HANDLE hFile, _Out_writes_bytes_to_opt_(nNumberOfBytesToRead, *lpNumberOfBytesRead) __out_data_source(FILE) LPVOID lpBuffer, _In_ DWORD nNumberOfBytesToRead, _Out_opt_ LPDWORD lpNumberOfBytesRead, _Inout_opt_ LPOVERLAPPED lpOverlapped );
-	*/
-	p := strings.Split(m["Params"], ", ")
-	for _, v := range p {
-		api.Params = append(api.Params, parseAPIParameter(v))
+	if api.Name == "BCryptEncrypt" {
+		log.Println("ReadFile")
+	}
+
+	re := regexp.MustCompile(RegParam)
+	split := re.Split(m["Params"], -1)
+	for _, v := range split {
+		api.Params = append(api.Params, parseAPIParameter("_"+v))
 		api.CountParams++
 	}
 	return api
@@ -126,40 +135,178 @@ func WriteStrSliceToFile(filename string, data []string) (int, error) {
 	return nn, nil
 }
 
+// Read a whole file into the memory and store it as array of lines
+func readLines(path string) (lines []string, err error) {
+
+	var (
+		part   []byte
+		prefix bool
+	)
+
+	// Start by getting a file descriptor over the file
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+	buffer := bytes.NewBuffer(make([]byte, 0))
+	for {
+		if part, prefix, err = reader.ReadLine(); err != nil {
+			break
+		}
+		buffer.Write(part)
+		if !prefix {
+			lines = append(lines, buffer.String())
+			buffer.Reset()
+		}
+	}
+	if err == io.EOF {
+		err = nil
+	}
+	return
+}
+
+// Exists reports whether the named file or directory exists.
+func Exists(name string) bool {
+	if _, err := os.Stat(name); err != nil {
+		if os.IsNotExist(err) {
+			return false
+		}
+	}
+	return true
+}
+
+// SliceContainsStringReverse returns if slice contains substring
+func SliceContainsStringReverse(a string, list []string) bool {
+	for _, b := range list {
+		if strings.Contains(a, b) {
+			return true
+		}
+	}
+	return false
+}
+
+func getDLLName(file, apiname, sdkpath string) (string, error) {
+	cat := strings.TrimSuffix(filepath.Base(file), ".h")
+	functionName := "nf-" + cat + "-" + strings.ToLower(apiname) + ".md"
+	mdFile := path.Join(sdkpath, "sdk-api-src", "content", cat, functionName)
+	mdFileContent, err := utils.ReadAll(mdFile)
+	if err != nil {
+		log.Printf("Failed to find file: %s", mdFile)
+		return "", err
+	}
+	m := regSubMatchToMapString(RegDllName, string(mdFileContent))
+	return strings.ToLower(m["DLL"]), nil
+}
+
 func main() {
 
 	// Parse arguments.
-	filePath := flag.String("path", "", "The file path to parse")
+	// C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\
+	sdkumPath := flag.String("sdk", "", "The path to the windows sdk directory")
+	// https://github.com/MicrosoftDocs/sdk-api
+	sdkapiPath := flag.String("sdk-api", "sdk-api", "The path to the sdk-api docs directory")
+
+	hookapisPath := flag.String("hookapis", "hookapis.txt", "The path to a a text file which define which APIs to trace, new line separated.")
+
 	flag.Parse()
-	if *filePath == "" {
+	if *sdkumPath == "" {
 		flag.Usage()
 		os.Exit(0)
 	}
 
-	// Read Win32 include API headers.
-	data, err := utils.ReadAll(*filePath)
+	if !Exists(*sdkumPath) {
+		log.Fatal("sdk directory does not exist")
+	}
+
+	if !Exists(*sdkapiPath) {
+		log.Fatal("sdk-api directory does not exist")
+	}
+	if !Exists(*hookapisPath) {
+		log.Fatal("hookapis.txt does not exists")
+	}
+
+	// Read the list of APIs we are interested to keep.
+	wantedAPIs, err := readLines(*hookapisPath)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if len(wantedAPIs) == 0 {
+		log.Fatal("hookapis.txt is empty")
+	}
+
+	files, err := utils.WalkAllFilesInDir(*sdkumPath)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	// Grab all API prototypes
-	// 1. Ignore: FORCEINLINE
-	var apis []API
-	var prototypes []string
-	r := regexp.MustCompile(reAPIs)
-	matches := r.FindAllString(string(data), -1)
-	log.Println("Size:", len(matches))
-	for _, v := range matches {
-		prototype := removeAnnotations(v)
-		prototype = standardizeSpaces(prototype)
-		prototypes = append(prototypes, prototype)
-		apis = append(apis, parseAPI(prototype))
+	m := make(map[string]map[string]API)
+	for _, file := range files {
+		
+		var prototypes []string
+		log.Printf("Processing %s\n", file)
+
+		if !strings.HasSuffix(file, "fileapi.h") &&
+			!strings.HasSuffix(file, "aprocessthreadsapi.h") &&
+			!strings.HasSuffix(file, "bcrypt.h") {
+			continue
+		}
+
+		// Read Win32 include API headers.
+		data, err := utils.ReadAll(file)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		// Grab all API prototypes
+		// 1. Ignore: FORCEINLINE
+		r := regexp.MustCompile(RegAPIs)
+		matches := r.FindAllString(string(data), -1)
+		log.Println("Size:", len(matches))
+
+		for _, v := range matches {
+			prototype := removeAnnotations(v)
+			prototype = standardizeSpaces(prototype)
+			prototypes = append(prototypes, prototype)
+
+			// Only parse APIs we want to hook.
+			if !SliceContainsStringReverse(prototype, wantedAPIs) {
+				continue
+			}
+
+			if strings.Contains(prototype, "BCryptEncrypt") {
+				log.Println("asas")
+			}
+
+			// Parse the API prototype.
+			papi := parseAPI(prototype)
+
+			// Find which DLL this API belongs to. Unfortunately, the sdk does
+			// not give you this information, we look into the sdk-api markdown
+			// docs instead. (Normally, we could have parsed everything from
+			// the md files, but they are missing the parameters type!)
+			dllname, err := getDLLName(file, papi.Name, *sdkapiPath)
+			if err != nil {
+				continue
+			}
+			log.Print(dllname)
+			if _, ok := m[dllname]; !ok {
+				m[dllname] = make(map[string]API)
+			}
+			m[dllname][papi.Name] = papi
+		}
+
+		if len(prototypes) > 0 {
+			// Write raw prototypes to a text file.
+			WriteStrSliceToFile("prototypes-"+filepath.Base(file)+".inc", prototypes)
+		}
 	}
 
-	// Marshall and write to json file.
-	data, _ = json.MarshalIndent(apis, "", " ")
-	utils.WriteBytesFile("apis.json", bytes.NewReader(data))
-
-	// Write raw prototypes to a text file.
-	WriteStrSliceToFile("prototypes.inc", prototypes)
+	if len(m) > 0 {
+		// Marshall and write to json file.
+		data, _ := json.MarshalIndent(m, "", " ")
+		utils.WriteBytesFile("apis.json", bytes.NewReader(data))
+	}
 }
