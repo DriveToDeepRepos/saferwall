@@ -19,13 +19,14 @@ import (
 
 const (
 	// RegAPIs is a regex that extract API prototypes.
-	RegAPIs = `(_Success_|WINBASEAPI|WINADVAPI|NTSTATUS|_Must_inspect_result_|BOOLEAN)[\d\w\s\)\(,\[\]\!*+=&<>/]+;`
+	RegAPIs = `(_Success_|HANDLE|INTERNETAPI|BOOLAPI|BOOL|STDAPI|WINUSERAPI|WINBASEAPI|WINADVAPI|NTSTATUS|_Must_inspect_result_|BOOLEAN)[\d\w\s\)\(,\[\]\!*+=&<>/|]+;`
 
-	RegProto = `(?P<Attr>WINBASEAPI|WINADVAPI)?( )?(?P<RetValType>[A-Z]+) (?P<CallConv>WINAPI|APIENTRY) (?P<ApiName>[a-zA-Z0-9]+)\((?P<Params>.*)\);`
+	RegProto = `(?P<Attr>WINBASEAPI|WINADVAPI)?( )?(?P<RetValType>[A-Z]+) (?P<CallConv>WINAPI|APIENTRY) (?P<ApiName>[a-zA-Z0-9]+)( )?\((?P<Params>.*)\);`
 
-	RegApiParams = `(?P<Anno>_In_|_In_opt_|_Inout_opt_|_Out_|_Inout_|_Out_opt_|_Outptr_opt_|_Reserved_|_Out[\w(),+ *]+|_In[\w()]+) (?P<Type>[\w *]+) (?P<Name>[*a-zA-Z0-9]+)`
+	// RegAPIParams parses params.
+	RegAPIParams = `(?P<Anno>_In_|_In_opt_|_Inout_opt_|_Out_|_Inout_|_Out_opt_|_Outptr_opt_|_Reserved_|_Out[\w(),+ *]+|_In[\w()]+) (?P<Type>[\w *]+) (?P<Name>[*a-zA-Z0-9]+)`
 
-	RegParam = `(, )_`
+	RegParam = `, `
 
 	RegDllName = `req\.dll: (?P<DLL>[\w]+\.dll)`
 )
@@ -39,12 +40,12 @@ type APIParam struct {
 
 // API represents information about a Win32 API.
 type API struct {
-	Attribute         string     `json:"attr"`        // Microsoft-specific attribute.
-	CallingConvention string     `json:"callConv"`    // Calling Convention.
-	Name              string     `json:"name"`        // Name of the API.
-	Params            []APIParam `json:"params"`      // API Arguments.
-	CountParams       uint8      `json:"countParams"` // Count of Params.
-	ReturnValueType   string     `json:"retVal"`      // Return value type.
+	Attribute         string     `json:"-"`      // Microsoft-specific attribute.
+	CallingConvention string     `json:"-"`      // Calling Convention.
+	Name              string     `json:"-"`      // Name of the API.
+	Params            []APIParam `json:"params"` // API Arguments.
+	CountParams       uint8      `json:"-"`      // Count of Params.
+	ReturnValueType   string     `json:"retVal"` // Return value type.
 }
 
 func regSubMatchToMapString(regEx, s string) (paramsMap map[string]string) {
@@ -62,7 +63,7 @@ func regSubMatchToMapString(regEx, s string) (paramsMap map[string]string) {
 }
 
 func parseAPIParameter(params string) APIParam {
-	m := regSubMatchToMapString(RegApiParams, params)
+	m := regSubMatchToMapString(RegAPIParams, params)
 	apiParam := APIParam{
 		Annotation: m["Anno"],
 		Name:       m["Name"],
@@ -72,6 +73,9 @@ func parseAPIParameter(params string) APIParam {
 }
 
 func parseAPI(apiPrototype string) API {
+	if strings.Contains(apiPrototype, "CreateToolhelp32Snapshot") {
+		log.Print()
+	}
 	m := regSubMatchToMapString(RegProto, apiPrototype)
 	api := API{
 		Attribute:         m["Attr"],
@@ -86,13 +90,31 @@ func parseAPI(apiPrototype string) API {
 		return api
 	}
 
-	if api.Name == "BCryptEncrypt" {
-		log.Println("ReadFile")
+	if api.Name == "" || api.CallingConvention == "" {
+		log.Printf("Failed to parse: %s", apiPrototype)
 	}
-
 	re := regexp.MustCompile(RegParam)
 	split := re.Split(m["Params"], -1)
-	for _, v := range split {
+	for i, v := range split {
+		// Quick hack:
+		ss := strings.Split(standardizeSpaces(v), " ")
+		if len(ss) == 2 {
+			// Force In for API without annotations.
+			v = "_In_ " + v
+		} else {
+			if i+1 < len(split) {
+				vv := standardizeSpaces(split[i+1])
+				if !strings.HasPrefix(vv, "In") &&
+					!strings.HasPrefix(vv, "Out") &&
+					!strings.HasPrefix(vv, "_In") &&
+					!strings.HasPrefix(vv, "_Reserved") &&
+					!strings.HasPrefix(vv, "_Out") {
+					v += " " + split[i+1]
+					split[i+1] = v + " " + split[i+1]
+					continue
+				}
+			}
+		}
 		api.Params = append(api.Params, parseAPIParameter("_"+v))
 		api.CountParams++
 	}
@@ -103,11 +125,29 @@ func removeAnnotations(apiPrototype string) string {
 	apiPrototype = strings.Replace(apiPrototype, "_Must_inspect_result_", "", -1)
 	apiPrototype = strings.Replace(apiPrototype, "_Success_(return != 0 && return < nBufferLength)", "", -1)
 	apiPrototype = strings.Replace(apiPrototype, "_Success_(return != 0 && return < cchBuffer)", "", -1)
+	apiPrototype = strings.Replace(apiPrototype, "_Success_(return != FALSE)", "", -1)
+	apiPrototype = strings.Replace(apiPrototype, "_Ret_maybenull_", "", -1)
+	apiPrototype = strings.Replace(apiPrototype, "_Post_writable_byte_size_(dwSize)", "", -1)
+	apiPrototype = strings.Replace(apiPrototype, "__out_data_source(FILE)", "", -1)
+
 	return apiPrototype
 }
 
 func standardizeSpaces(s string) string {
 	return strings.Join(strings.Fields(s), " ")
+}
+
+func standardize(s string) string {
+	if strings.HasPrefix(s, "BOOLAPI") {
+		s = strings.Replace(s, "BOOLAPI", "BOOL WINAPI", -1)
+	} else if strings.HasPrefix(s, "INTERNETAPI_(HINTERNET)") {
+		s = strings.Replace(s, "INTERNETAPI_(HINTERNET)", "HINTERNET WINAPI", -1)
+	} else if strings.HasPrefix(s, "INTERNETAPI_(DWORD)") {
+		s = strings.Replace(s, "INTERNETAPI_(DWORD)", "DWORD WINAPI", -1)
+	} else if strings.HasPrefix(s, "STDAPI") {
+		s = strings.Replace(s, "STDAPI", "HRESULT WINAPI", -1)
+	}
+	return s
 }
 
 // WriteStrSliceToFile writes a slice of string line by line to a file.
@@ -181,6 +221,7 @@ func Exists(name string) bool {
 // SliceContainsStringReverse returns if slice contains substring
 func SliceContainsStringReverse(a string, list []string) bool {
 	for _, b := range list {
+		b = " " + b
 		if strings.Contains(a, b) {
 			return true
 		}
@@ -201,6 +242,22 @@ func getDLLName(file, apiname, sdkpath string) (string, error) {
 	return strings.ToLower(m["DLL"]), nil
 }
 
+func unique(slice []string) []string {
+	encountered := map[string]int{}
+	diff := []string{}
+
+	for _, v := range slice {
+		encountered[v] = encountered[v] + 1
+	}
+
+	for _, v := range slice {
+		if encountered[v] == 1 {
+			diff = append(diff, v)
+		}
+	}
+	return diff
+}
+
 func main() {
 
 	// Parse arguments.
@@ -208,10 +265,46 @@ func main() {
 	sdkumPath := flag.String("sdk", "", "The path to the windows sdk directory")
 	// https://github.com/MicrosoftDocs/sdk-api
 	sdkapiPath := flag.String("sdk-api", "sdk-api", "The path to the sdk-api docs directory")
-
 	hookapisPath := flag.String("hookapis", "hookapis.txt", "The path to a a text file which define which APIs to trace, new line separated.")
+	printretval := flag.Bool("printretval", false, "Print return value type for each API")
+
+	printanno := flag.Bool("printanno", false, "Print list of annotation values")
+	minify := flag.Bool("minify", false, "Mininify json")
 
 	flag.Parse()
+
+	if *printanno || *minify {
+		data, err := utils.ReadAll("apis.json")
+		if err != nil {
+			log.Fatalln(err)
+		}
+		apis := make(map[string]map[string]API)
+		err = json.Unmarshal(data, &apis)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		if *printanno {
+			var annotations []string
+			for _, v := range apis {
+				for _, vv := range v {
+					for _, param := range vv.Params {
+						if !utils.StringInSlice(param.Annotation, annotations) {
+							annotations = append(annotations, param.Annotation)
+							log.Println(param.Annotation)
+						}
+					}
+				}
+			}
+		}
+
+		if *minify {
+			data, _ := json.MarshalIndent(minifyAPIs(apis), "", " ")
+			utils.WriteBytesFile("mini-apis.json", bytes.NewReader(data))
+		}
+		os.Exit(0)
+	}
+
 	if *sdkumPath == "" {
 		flag.Usage()
 		os.Exit(0)
@@ -243,14 +336,27 @@ func main() {
 	}
 
 	m := make(map[string]map[string]API)
+	parsedAPI := 0
 	for _, file := range files {
-		
-		var prototypes []string
-		log.Printf("Processing %s\n", file)
 
-		if !strings.HasSuffix(file, "fileapi.h") &&
-			!strings.HasSuffix(file, "aprocessthreadsapi.h") &&
-			!strings.HasSuffix(file, "bcrypt.h") {
+		var prototypes []string
+
+		file = strings.ToLower(file)
+
+		if !strings.HasSuffix(file, "\\fileapi.h") &&
+			!strings.HasSuffix(file, "\\processthreadsapi.h") &&
+			!strings.HasSuffix(file, "\\winreg.h") &&
+			!strings.HasSuffix(file, "\\bcrypt.h") &&
+			!strings.HasSuffix(file, "\\winbase.h") &&
+			!strings.HasSuffix(file, "\\urlmon.h") &&
+			!strings.HasSuffix(file, "\\memoryapi.h") &&
+			!strings.HasSuffix(file, "\\tlhelp32.h") &&
+			!strings.HasSuffix(file, "\\debugapi.h") &&
+			!strings.HasSuffix(file, "\\winsvc.h") &&
+			!strings.HasSuffix(file, "\\libloaderapi.h") &&
+			!strings.HasSuffix(file, "\\sysinfoapi.h") &&
+			!strings.HasSuffix(file, "\\winuser.h") &&
+			!strings.HasSuffix(file, "\\wininet.h") {
 			continue
 		}
 
@@ -264,11 +370,11 @@ func main() {
 		// 1. Ignore: FORCEINLINE
 		r := regexp.MustCompile(RegAPIs)
 		matches := r.FindAllString(string(data), -1)
-		log.Println("Size:", len(matches))
 
 		for _, v := range matches {
 			prototype := removeAnnotations(v)
 			prototype = standardizeSpaces(prototype)
+			prototype = standardize(prototype)
 			prototypes = append(prototypes, prototype)
 
 			// Only parse APIs we want to hook.
@@ -276,11 +382,10 @@ func main() {
 				continue
 			}
 
-			if strings.Contains(prototype, "BCryptEncrypt") {
-				log.Println("asas")
-			}
-
 			// Parse the API prototype.
+			if strings.Contains("CreateProcessWithTokenW", prototype) {
+				log.Print()
+			}
 			papi := parseAPI(prototype)
 
 			// Find which DLL this API belongs to. Unfortunately, the sdk does
@@ -291,11 +396,11 @@ func main() {
 			if err != nil {
 				continue
 			}
-			log.Print(dllname)
 			if _, ok := m[dllname]; !ok {
 				m[dllname] = make(map[string]API)
 			}
 			m[dllname][papi.Name] = papi
+			parsedAPI++
 		}
 
 		if len(prototypes) > 0 {
@@ -309,4 +414,26 @@ func main() {
 		data, _ := json.MarshalIndent(m, "", " ")
 		utils.WriteBytesFile("apis.json", bytes.NewReader(data))
 	}
+
+	var foundAPIs []string
+	if *printretval {
+		for dll, v := range m {
+			log.Printf("DLL: %s\n", dll)
+			log.Println("====================")
+			for api, vv := range v {
+				log.Printf("API: %s:%s() => %s\n", vv.CallingConvention, api, vv.ReturnValueType)
+				if !utils.StringInSlice(api, wantedAPIs) {
+					log.Printf("Not found")
+				}
+				foundAPIs = append(foundAPIs, api)
+				for _, param := range vv.Params {
+					log.Printf("Type: %s\n", param.Type)
+				}
+			}
+		}
+	}
+
+	log.Printf("Parsed API count: %d, Hooked API Count: %d", parsedAPI, len(wantedAPIs))
+	log.Print(unique(append(wantedAPIs, foundAPIs...)))
+
 }
