@@ -13,17 +13,26 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/dlclark/regexp2"
+
 	"github.com/saferwall/saferwall/pkg/utils"
 )
 
 const (
-
 	RegParam = `, `
 
 	RegDllName = `req\.dll: (?P<DLL>[\w]+\.dll)`
 )
 
-
+func regexp2FindAllString(re *regexp2.Regexp, s string) []string {
+	var matches []string
+	m, _ := re.FindStringMatch(s)
+	for m != nil {
+		matches = append(matches, m.String())
+		m, _ = re.FindNextMatch(m)
+	}
+	return matches
+}
 
 func regSubMatchToMapString(regEx, s string) (paramsMap map[string]string) {
 
@@ -38,6 +47,7 @@ func regSubMatchToMapString(regEx, s string) (paramsMap map[string]string) {
 	}
 	return
 }
+
 
 func removeAnnotations(apiPrototype string) string {
 	apiPrototype = strings.Replace(apiPrototype, "_Must_inspect_result_", "", -1)
@@ -260,6 +270,8 @@ func main() {
 	}
 
 	m := make(map[string]map[string]API)
+	var winstructs []string
+
 	parsedAPI := 0
 	for _, file := range files {
 
@@ -291,7 +303,7 @@ func main() {
 		}
 
 		// Start parsing all struct in header file.
-		parseStruct(string(data))
+		winstructs = append(winstructs, getAllStructs(string(data))...)
 
 		// Grab all API prototypes
 		// 1. Ignore: FORCEINLINE
@@ -360,4 +372,5 @@ func main() {
 	log.Printf("Parsed API count: %d, Hooked API Count: %d", parsedAPI, len(wantedAPIs))
 	log.Print(unique(append(wantedAPIs, foundAPIs...)))
 
+	WriteStrSliceToFile("winstructs.h", winstructs)
 }
