@@ -1,7 +1,6 @@
 package main
 
 import (
-	// "encoding/json"
 	"bufio"
 	"bytes"
 	"encoding/json"
@@ -18,35 +17,13 @@ import (
 )
 
 const (
-	// RegAPIs is a regex that extract API prototypes.
-	RegAPIs = `(_Success_|HANDLE|INTERNETAPI|BOOLAPI|BOOL|STDAPI|WINUSERAPI|WINBASEAPI|WINADVAPI|NTSTATUS|_Must_inspect_result_|BOOLEAN)[\d\w\s\)\(,\[\]\!*+=&<>/|]+;`
-
-	RegProto = `(?P<Attr>WINBASEAPI|WINADVAPI)?( )?(?P<RetValType>[A-Z]+) (?P<CallConv>WINAPI|APIENTRY) (?P<ApiName>[a-zA-Z0-9]+)( )?\((?P<Params>.*)\);`
-
-	// RegAPIParams parses params.
-	RegAPIParams = `(?P<Anno>_In_|_In_opt_|_Inout_opt_|_Out_|_Inout_|_Out_opt_|_Outptr_opt_|_Reserved_|_Out[\w(),+ *]+|_In[\w()]+) (?P<Type>[\w *]+) (?P<Name>[*a-zA-Z0-9]+)`
 
 	RegParam = `, `
 
 	RegDllName = `req\.dll: (?P<DLL>[\w]+\.dll)`
 )
 
-// APIParam represents a paramter of a Win32 API.
-type APIParam struct {
-	Annotation string `json:"anno"`
-	Type       string `json:"type"`
-	Name       string `json:"name"`
-}
 
-// API represents information about a Win32 API.
-type API struct {
-	Attribute         string     `json:"-"`      // Microsoft-specific attribute.
-	CallingConvention string     `json:"-"`      // Calling Convention.
-	Name              string     `json:"-"`      // Name of the API.
-	Params            []APIParam `json:"params"` // API Arguments.
-	CountParams       uint8      `json:"-"`      // Count of Params.
-	ReturnValueType   string     `json:"retVal"` // Return value type.
-}
 
 func regSubMatchToMapString(regEx, s string) (paramsMap map[string]string) {
 
@@ -60,65 +37,6 @@ func regSubMatchToMapString(regEx, s string) (paramsMap map[string]string) {
 		}
 	}
 	return
-}
-
-func parseAPIParameter(params string) APIParam {
-	m := regSubMatchToMapString(RegAPIParams, params)
-	apiParam := APIParam{
-		Annotation: m["Anno"],
-		Name:       m["Name"],
-		Type:       m["Type"],
-	}
-	return apiParam
-}
-
-func parseAPI(apiPrototype string) API {
-	if strings.Contains(apiPrototype, "CreateToolhelp32Snapshot") {
-		log.Print()
-	}
-	m := regSubMatchToMapString(RegProto, apiPrototype)
-	api := API{
-		Attribute:         m["Attr"],
-		CallingConvention: m["CallConv"],
-		Name:              m["ApiName"],
-		ReturnValueType:   m["RetValType"],
-	}
-
-	// Treat the VOID case.
-	if m["Params"] == " VOID " {
-		api.CountParams = 0
-		return api
-	}
-
-	if api.Name == "" || api.CallingConvention == "" {
-		log.Printf("Failed to parse: %s", apiPrototype)
-	}
-	re := regexp.MustCompile(RegParam)
-	split := re.Split(m["Params"], -1)
-	for i, v := range split {
-		// Quick hack:
-		ss := strings.Split(standardizeSpaces(v), " ")
-		if len(ss) == 2 {
-			// Force In for API without annotations.
-			v = "_In_ " + v
-		} else {
-			if i+1 < len(split) {
-				vv := standardizeSpaces(split[i+1])
-				if !strings.HasPrefix(vv, "In") &&
-					!strings.HasPrefix(vv, "Out") &&
-					!strings.HasPrefix(vv, "_In") &&
-					!strings.HasPrefix(vv, "_Reserved") &&
-					!strings.HasPrefix(vv, "_Out") {
-					v += " " + split[i+1]
-					split[i+1] = v + " " + split[i+1]
-					continue
-				}
-			}
-		}
-		api.Params = append(api.Params, parseAPIParameter("_"+v))
-		api.CountParams++
-	}
-	return api
 }
 
 func removeAnnotations(apiPrototype string) string {
@@ -286,12 +204,18 @@ func main() {
 
 		if *printanno {
 			var annotations []string
+			var types []string
 			for _, v := range apis {
 				for _, vv := range v {
 					for _, param := range vv.Params {
 						if !utils.StringInSlice(param.Annotation, annotations) {
 							annotations = append(annotations, param.Annotation)
-							log.Println(param.Annotation)
+							// log.Println(param.Annotation)
+						}
+
+						if !utils.StringInSlice(param.Type, types) {
+							types = append(types, param.Type)
+							log.Println(param.Type)
 						}
 					}
 				}
@@ -366,6 +290,9 @@ func main() {
 			log.Fatalln(err)
 		}
 
+		// Start parsing all struct in header file.
+		parseStruct(string(data))
+
 		// Grab all API prototypes
 		// 1. Ignore: FORCEINLINE
 		r := regexp.MustCompile(RegAPIs)
@@ -383,9 +310,6 @@ func main() {
 			}
 
 			// Parse the API prototype.
-			if strings.Contains("CreateProcessWithTokenW", prototype) {
-				log.Print()
-			}
 			papi := parseAPI(prototype)
 
 			// Find which DLL this API belongs to. Unfortunately, the sdk does
