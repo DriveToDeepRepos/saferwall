@@ -270,7 +270,8 @@ func main() {
 	}
 
 	m := make(map[string]map[string]API)
-	var winstructs []string
+	var winStructsRaw []string
+	var winStructs []Struct
 
 	parsedAPI := 0
 	for _, file := range files {
@@ -303,7 +304,9 @@ func main() {
 		}
 
 		// Start parsing all struct in header file.
-		winstructs = append(winstructs, getAllStructs(string(data))...)
+		a, b := getAllStructs(string(data))
+		winStructsRaw = append(winStructsRaw, a...)
+		winStructs = append(winStructs, b...)
 
 		// Grab all API prototypes
 		// 1. Ignore: FORCEINLINE
@@ -372,5 +375,9 @@ func main() {
 	log.Printf("Parsed API count: %d, Hooked API Count: %d", parsedAPI, len(wantedAPIs))
 	log.Print(unique(append(wantedAPIs, foundAPIs...)))
 
-	WriteStrSliceToFile("winstructs.h", winstructs)
+	// Write struct results
+	WriteStrSliceToFile("winstructs.h", winStructsRaw)
+
+	b, _ := json.MarshalIndent(winStructs, "", " ")
+	utils.WriteBytesFile("structs.json", bytes.NewReader(b))
 }

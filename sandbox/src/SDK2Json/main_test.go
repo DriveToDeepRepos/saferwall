@@ -32,9 +32,13 @@ var reStructtests = []struct {
 	out int
 }{
 	{"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\shared\\bcrypt.h", 27},
+	{"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\um\\debugapi.h", 0},
 	{"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\um\\fileapi.h", 5},
-	{"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\um\\processthreadsapi.h", 10},
+	{"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\um\\libloaderapi.h", 3},
 	{"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\um\\memoryapi.h", 2},
+	{"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\um\\processthreadsapi.h", 10},
+	{"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\um\\sysinfoapi.h", 2},
+	{"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.19041.0\\um\\tlhelp32.h", 7},
 }
 
 func TestGetAPIPrototypes(t *testing.T) {
