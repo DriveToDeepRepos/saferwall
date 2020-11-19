@@ -1,0 +1,800 @@
+{
+ "kernel32.dll": {
+  "CreateDirectoryA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "CreateDirectoryA",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpPathName"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "LPSECURITY_ATTRIBUTES",
+     "name": "lpSecurityAttributes"
+    }
+   ],
+   "countParams": 2,
+   "retVal": "BOOL"
+  },
+  "CreateDirectoryW": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "CreateDirectoryW",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCWSTR",
+     "name": "lpPathName"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "LPSECURITY_ATTRIBUTES",
+     "name": "lpSecurityAttributes"
+    }
+   ],
+   "countParams": 2,
+   "retVal": "BOOL"
+  },
+  "CreateFileA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "CreateFileA",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpFileName"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "dwDesiredAccess"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "dwShareMode"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "LPSECURITY_ATTRIBUTES",
+     "name": "lpSecurityAttributes"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "dwCreationDisposition"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "dwFlagsAndAttributes"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "HANDLE",
+     "name": "hTemplateFile"
+    }
+   ],
+   "countParams": 7,
+   "retVal": "HANDLE"
+  },
+  "CreateFileW": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "CreateFileW",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCWSTR",
+     "name": "lpFileName"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "dwDesiredAccess"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "dwShareMode"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "LPSECURITY_ATTRIBUTES",
+     "name": "lpSecurityAttributes"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "dwCreationDisposition"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "dwFlagsAndAttributes"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "HANDLE",
+     "name": "hTemplateFile"
+    }
+   ],
+   "countParams": 7,
+   "retVal": "HANDLE"
+  },
+  "DeleteFileA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "DeleteFileA",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpFileName"
+    }
+   ],
+   "countParams": 1,
+   "retVal": "BOOL"
+  },
+  "DeleteFileW": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "DeleteFileW",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCWSTR",
+     "name": "lpFileName"
+    }
+   ],
+   "countParams": 1,
+   "retVal": "BOOL"
+  },
+  "FindFirstFileA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "FindFirstFileA",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpFileName"
+    },
+    {
+     "anno": "_Out_",
+     "type": "LPWIN32_FIND_DATAA",
+     "name": "lpFindFileData"
+    }
+   ],
+   "countParams": 2,
+   "retVal": "HANDLE"
+  },
+  "FindFirstFileExA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "FindFirstFileExA",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpFileName"
+    },
+    {
+     "anno": "_In_",
+     "type": "FINDEX_INFO_LEVELS",
+     "name": "fInfoLevelId"
+    },
+    {
+     "anno": "_Out_writes_bytes_(sizeof(WIN32_FIND_DATAA))",
+     "type": "LPVOID",
+     "name": "lpFindFileData"
+    },
+    {
+     "anno": "_In_",
+     "type": "FINDEX_SEARCH_OPS",
+     "name": "fSearchOp"
+    },
+    {
+     "anno": "_Reserved_",
+     "type": "LPVOID",
+     "name": "lpSearchFilter"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "dwAdditionalFlags"
+    }
+   ],
+   "countParams": 6,
+   "retVal": "HANDLE"
+  },
+  "FindFirstFileExW": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "FindFirstFileExW",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCWSTR",
+     "name": "lpFileName"
+    },
+    {
+     "anno": "_In_",
+     "type": "FINDEX_INFO_LEVELS",
+     "name": "fInfoLevelId"
+    },
+    {
+     "anno": "_Out_writes_bytes_(sizeof(WIN32_FIND_DATAW))",
+     "type": "LPVOID",
+     "name": "lpFindFileData"
+    },
+    {
+     "anno": "_In_",
+     "type": "FINDEX_SEARCH_OPS",
+     "name": "fSearchOp"
+    },
+    {
+     "anno": "_Reserved_",
+     "type": "LPVOID",
+     "name": "lpSearchFilter"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "dwAdditionalFlags"
+    }
+   ],
+   "countParams": 6,
+   "retVal": "HANDLE"
+  },
+  "FindFirstFileW": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "FindFirstFileW",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCWSTR",
+     "name": "lpFileName"
+    },
+    {
+     "anno": "_Out_",
+     "type": "LPWIN32_FIND_DATAW",
+     "name": "lpFindFileData"
+    }
+   ],
+   "countParams": 2,
+   "retVal": "HANDLE"
+  },
+  "FindNextFileA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "FindNextFileA",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "HANDLE",
+     "name": "hFindFile"
+    },
+    {
+     "anno": "_Out_",
+     "type": "LPWIN32_FIND_DATAA",
+     "name": "lpFindFileData"
+    }
+   ],
+   "countParams": 2,
+   "retVal": "BOOL"
+  },
+  "FindNextFileW": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "FindNextFileW",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "HANDLE",
+     "name": "hFindFile"
+    },
+    {
+     "anno": "_Out_",
+     "type": "LPWIN32_FIND_DATAW",
+     "name": "lpFindFileData"
+    }
+   ],
+   "countParams": 2,
+   "retVal": "BOOL"
+  },
+  "GetDiskFreeSpaceA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "GetDiskFreeSpaceA",
+   "params": [
+    {
+     "anno": "_In_opt_",
+     "type": "LPCSTR",
+     "name": "lpRootPathName"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpSectorsPerCluster"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpBytesPerSector"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpNumberOfFreeClusters"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpTotalNumberOfClusters"
+    }
+   ],
+   "countParams": 5,
+   "retVal": "BOOL"
+  },
+  "GetDiskFreeSpaceExA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "GetDiskFreeSpaceExA",
+   "params": [
+    {
+     "anno": "_In_opt_",
+     "type": "LPCSTR",
+     "name": "lpDirectoryName"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "PULARGE_INTEGER",
+     "name": "lpFreeBytesAvailableToCaller"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "PULARGE_INTEGER",
+     "name": "lpTotalNumberOfBytes"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "PULARGE_INTEGER",
+     "name": "lpTotalNumberOfFreeBytes"
+    }
+   ],
+   "countParams": 4,
+   "retVal": "BOOL"
+  },
+  "GetDiskFreeSpaceExW": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "GetDiskFreeSpaceExW",
+   "params": [
+    {
+     "anno": "_In_opt_",
+     "type": "LPCWSTR",
+     "name": "lpDirectoryName"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "PULARGE_INTEGER",
+     "name": "lpFreeBytesAvailableToCaller"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "PULARGE_INTEGER",
+     "name": "lpTotalNumberOfBytes"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "PULARGE_INTEGER",
+     "name": "lpTotalNumberOfFreeBytes"
+    }
+   ],
+   "countParams": 4,
+   "retVal": "BOOL"
+  },
+  "GetDiskFreeSpaceW": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "GetDiskFreeSpaceW",
+   "params": [
+    {
+     "anno": "_In_opt_",
+     "type": "LPCWSTR",
+     "name": "lpRootPathName"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpSectorsPerCluster"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpBytesPerSector"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpNumberOfFreeClusters"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpTotalNumberOfClusters"
+    }
+   ],
+   "countParams": 5,
+   "retVal": "BOOL"
+  },
+  "GetFileAttributesA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "GetFileAttributesA",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpFileName"
+    }
+   ],
+   "countParams": 1,
+   "retVal": "DWORD"
+  },
+  "GetFileAttributesExA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "GetFileAttributesExA",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpFileName"
+    },
+    {
+     "anno": "_In_",
+     "type": "GET_FILEEX_INFO_LEVELS",
+     "name": "fInfoLevelId"
+    },
+    {
+     "anno": "_Out_writes_bytes_(sizeof(WIN32_FILE_ATTRIBUTE_DATA))",
+     "type": "LPVOID",
+     "name": "lpFileInformation"
+    }
+   ],
+   "countParams": 3,
+   "retVal": "BOOL"
+  },
+  "GetFileAttributesExW": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "GetFileAttributesExW",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCWSTR",
+     "name": "lpFileName"
+    },
+    {
+     "anno": "_In_",
+     "type": "GET_FILEEX_INFO_LEVELS",
+     "name": "fInfoLevelId"
+    },
+    {
+     "anno": "_Out_writes_bytes_(sizeof(WIN32_FILE_ATTRIBUTE_DATA))",
+     "type": "LPVOID",
+     "name": "lpFileInformation"
+    }
+   ],
+   "countParams": 3,
+   "retVal": "BOOL"
+  },
+  "GetFileAttributesW": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "GetFileAttributesW",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCWSTR",
+     "name": "lpFileName"
+    }
+   ],
+   "countParams": 1,
+   "retVal": "DWORD"
+  },
+  "GetVolumeInformationA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "GetVolumeInformationA",
+   "params": [
+    {
+     "anno": "_In_opt_",
+     "type": "LPCSTR",
+     "name": "lpRootPathName"
+    },
+    {
+     "anno": "_Out_writes_opt_(nVolumeNameSize)",
+     "type": "LPSTR",
+     "name": "lpVolumeNameBuffer"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "nVolumeNameSize"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpVolumeSerialNumber"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpMaximumComponentLength"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpFileSystemFlags"
+    },
+    {
+     "anno": "_Out_writes_opt_(nFileSystemNameSize)",
+     "type": "LPSTR",
+     "name": "lpFileSystemNameBuffer"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "nFileSystemNameSize"
+    }
+   ],
+   "countParams": 8,
+   "retVal": "BOOL"
+  },
+  "ReadFile": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "ReadFile",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "HANDLE",
+     "name": "hFile"
+    },
+    {
+     "anno": "",
+     "type": "",
+     "name": ""
+    },
+    {
+     "anno": "",
+     "type": "",
+     "name": ""
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "nNumberOfBytesToRead"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpNumberOfBytesRead"
+    },
+    {
+     "anno": "_Inout_opt_",
+     "type": "LPOVERLAPPED",
+     "name": "lpOverlapped"
+    }
+   ],
+   "countParams": 6,
+   "retVal": "BOOL"
+  },
+  "ReadFileEx": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "ReadFileEx",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "HANDLE",
+     "name": "hFile"
+    },
+    {
+     "anno": "_Out_writes_bytes_opt_(nNumberOfBytesToRead) __out_data_source(FILE)",
+     "type": "LPVOID",
+     "name": "lpBuffer"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "nNumberOfBytesToRead"
+    },
+    {
+     "anno": "_Inout_",
+     "type": "LPOVERLAPPED",
+     "name": "lpOverlapped"
+    },
+    {
+     "anno": "_In_",
+     "type": "LPOVERLAPPED_COMPLETION_ROUTINE",
+     "name": "lpCompletionRoutine"
+    }
+   ],
+   "countParams": 5,
+   "retVal": "BOOL"
+  },
+  "ReadFileScatter": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "ReadFileScatter",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "HANDLE",
+     "name": "hFile"
+    },
+    {
+     "anno": "_In_",
+     "type": "FILE_SEGMENT_ELEMENT",
+     "name": "aSegmentArray"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "nNumberOfBytesToRead"
+    },
+    {
+     "anno": "_Reserved_",
+     "type": "LPDWORD",
+     "name": "lpReserved"
+    },
+    {
+     "anno": "_Inout_",
+     "type": "LPOVERLAPPED",
+     "name": "lpOverlapped"
+    }
+   ],
+   "countParams": 5,
+   "retVal": "BOOL"
+  },
+  "RemoveDirectoryA": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "RemoveDirectoryA",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpPathName"
+    }
+   ],
+   "countParams": 1,
+   "retVal": "BOOL"
+  },
+  "RemoveDirectoryW": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "RemoveDirectoryW",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCWSTR",
+     "name": "lpPathName"
+    }
+   ],
+   "countParams": 1,
+   "retVal": "BOOL"
+  },
+  "WriteFile": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "WriteFile",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "HANDLE",
+     "name": "hFile"
+    },
+    {
+     "anno": "_In_reads_bytes_opt_(nNumberOfBytesToWrite)",
+     "type": "LPCVOID",
+     "name": "lpBuffer"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "nNumberOfBytesToWrite"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpNumberOfBytesWritten"
+    },
+    {
+     "anno": "_Inout_opt_",
+     "type": "LPOVERLAPPED",
+     "name": "lpOverlapped"
+    }
+   ],
+   "countParams": 5,
+   "retVal": "BOOL"
+  },
+  "WriteFileEx": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "WriteFileEx",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "HANDLE",
+     "name": "hFile"
+    },
+    {
+     "anno": "_In_reads_bytes_opt_(nNumberOfBytesToWrite)",
+     "type": "LPCVOID",
+     "name": "lpBuffer"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "nNumberOfBytesToWrite"
+    },
+    {
+     "anno": "_Inout_",
+     "type": "LPOVERLAPPED",
+     "name": "lpOverlapped"
+    },
+    {
+     "anno": "_In_",
+     "type": "LPOVERLAPPED_COMPLETION_ROUTINE",
+     "name": "lpCompletionRoutine"
+    }
+   ],
+   "countParams": 5,
+   "retVal": "BOOL"
+  },
+  "WriteFileGather": {
+   "attr": "WINBASEAPI",
+   "callConv": "WINAPI",
+   "name": "WriteFileGather",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "HANDLE",
+     "name": "hFile"
+    },
+    {
+     "anno": "_In_",
+     "type": "FILE_SEGMENT_ELEMENT",
+     "name": "aSegmentArray"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "nNumberOfBytesToWrite"
+    },
+    {
+     "anno": "_Reserved_",
+     "type": "LPDWORD",
+     "name": "lpReserved"
+    },
+    {
+     "anno": "_Inout_",
+     "type": "LPOVERLAPPED",
+     "name": "lpOverlapped"
+    }
+   ],
+   "countParams": 5,
+   "retVal": "BOOL"
+  }
+ }
+}
