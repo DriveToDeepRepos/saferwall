@@ -224,7 +224,7 @@ hashmap_put(struct hashmap_s *const m, const void *const key, const unsigned len
 }
 
 
-void *
+extern "C" void *
 hashmap_get(const struct hashmap_s *const m, const void *const key, const unsigned len)
 {
     unsigned int curr;

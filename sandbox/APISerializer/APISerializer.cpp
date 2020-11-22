@@ -34,6 +34,12 @@ HOOK_CONTEXT gHookContext;
 struct hashmap_s hashmapA;
 
 
+extern "C" {
+DWORD __stdcall GetBasePointer();
+DWORD __stdcall HookHandler();
+}
+
+
 
 char *
 ReadMyFile(const char *filename)
@@ -159,8 +165,7 @@ dump(const char *js, jsmntok_t *t, size_t count, int indent)
     return 0;
 }
 
-BOOL
-IsInsideHook()
+extern "C" __declspec(noinline) BOOL WINAPI IsInsideHook()
 /*++
 
 Routine Description:
@@ -209,8 +214,7 @@ EnterHookGuard()
 }
 
 
-BOOL
-IsCalledFromSystemMemory(DWORD_PTR ReturnAddress)
+extern "C" __declspec(noinline) BOOL WINAPI IsCalledFromSystemMemory(DWORD_PTR ReturnAddress)
 {
     if (ReturnAddress >= gHookContext.ModuleBase && ReturnAddress <= gHookContext.ModuleBase  + gHookContext.SizeOfImage)
     {
@@ -297,53 +301,102 @@ MultiByteToWide(CHAR *lpMultiByteStr)
     // return wszDest;
 }
 
-PVOID WINAPI
-GenericHookHandler() {
 
-	DWORD_PTR RetAddr = (DWORD_PTR)_ReturnAddress();
-    DWORD_PTR Target, SecondTarget;
+extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr)
+{
+    DWORD_PTR Target;
     PAPI pAPI;
 
-	// CALL NEAR
-    if (*((BYTE *)RetAddr - 6) == 0xFF && *((BYTE *)RetAddr - 5) == 0x15)
+    // CALL NEAR
+    BYTE *byte1 = (BYTE *)(RetAddr - 6);
+    BYTE *byte2 = (BYTE *)(RetAddr - 5);
+    if (*byte1 == 0xFF && *byte2 == 0x15)
     {
         Target = **((DWORD_PTR **)(RetAddr - 4));
         printf("0x%08x\n", Target);
 
-        // Is the jump leads to our Handler
-        SecondTarget = **((DWORD_PTR **)(Target + 2));
-        printf("0x%08x, 0x%08x\n", SecondTarget, GenericHookHandler);
-
-        pAPI = (PAPI)hashmap_get(&hashmapA, (PVOID)SecondTarget, 0);
-        if (pAPI == NULL)
-        {
-            printf("API not found !\n");
-        }
-
-        printf("API Name: %s\n", pAPI->Name);
+        pAPI = (PAPI)hashmap_get(&hashmapA, (PVOID)Target, 0);
+        return pAPI;
     }
 
-	// Are we called from inside a our own hook handler.
+    return NULL;
+}
+
+
+extern "C" __declspec(noinline) PCHAR WINAPI TraceAPI(DWORD_PTR BasePointer, PAPI pAPI)
+{
+    CHAR buff[MAX_PATH] = "";
+    CHAR out[MAX_PATH] = "";
+    for (int i = 0; i < pAPI->cParams; i++)
+    {
+
+		DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + (i * 4));
+        switch (pAPI->Parameters[i].Annotation)
+        {
+        case PARAM_IN:
+            switch (pAPI->Parameters[i].Type)
+            {
+            case PARAM_IMM:
+                _snprintf(buff, sizeof(buff), "%s:%lu", (PCHAR)pAPI->Parameters[i].Name, Param);
+            case PARAM_PTR_IMM:
+                _snprintf(
+                    buff,
+                    sizeof(buff),
+                   "%s:%lu",
+                    (PCHAR)pAPI->Parameters[i].Name,
+                    *(DWORD_PTR *)(BasePointer + (i * 4)));
+            case PARAM_ASCII_STR:
+                _snprintf(
+                    buff, sizeof(buff), "%s:%s", (PCHAR)pAPI->Parameters[i].Name, (PCHAR)(BasePointer + (i * 4)));
+            case PARAM_WIDE_STR:
+                _snprintf(buff, MAX_PATH, "%s:%ws", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+            case PARAM_PTR_STRUCT:
+                _snprintf(buff, sizeof(buff), "%s:0x%p", (PCHAR)pAPI->Parameters[i].Name, Param);
+            default:
+                break;
+            }
+		
+		}
+        strncat(out, buff, strlen(buff));
+        strcat(out, ", ");
+	}
+
+	return out;
+}
+
+VOID WINAPI
+GenericHookHandler()
+{
+    PAPI pAPI = GetTargetAPI((DWORD_PTR)_ReturnAddress());
+    DWORD ebp = GetBasePointer();
+
+    // DWORD_PTR *Param1 = (DWORD_PTR *)(ebp + 8);
+    //   DWORD_PTR *Param2 = (DWORD_PTR *)(ebp + 0xC);
+    //   printf("%ws", *Param1);
+
+    // Are we called from inside a our own hook handler.
     //
-    if (IsInsideHook())
+    if (IsInsideHook() || IsCalledFromSystemMemory((DWORD_PTR)_ReturnAddress()))
     {
         printf("IsInsideHook()\n");
     }
 
-	if (IsCalledFromSystemMemory(RetAddr)) {
-
-		 printf("Called from system memory!\n");
-
+    if (IsCalledFromSystemMemory((DWORD_PTR)_ReturnAddress()))
+    {
+        printf("Called from system memory!\n");
     }
 
+    printf("API Name: %s, target: 0x%p\n", pAPI->Name, pAPI->RealTarget);
 
-
-
-
-    return NULL;
-	
+    CHAR log[MAX_PATH] = "";
+    CHAR tmp[MAX_PATH] = "";
+    snprintf(log, MAX_PATH, "%s(", pAPI->Name);
+    CHAR *p = TraceAPI(ebp + 8, pAPI);
+    strncpy(tmp, p, strlen(p));
+    strcat(tmp, ")");
+	strncat(log, tmp, MAX_PATH);
+    printf("");
 }
-
 
 VOID
 GetRandomString(PWCHAR Str, CONST INT Len)
@@ -472,7 +525,6 @@ main()
         printf("TlsAlloc() failed");
     }
 
-
     // Read a json file
     const char *filename = "C:\\coding\\saferwall-sandbox\\sandbox\\src\\sdk2json\\mini-apis.json";
     char *JSON_STRING = ReadMyFile(filename);
@@ -493,7 +545,6 @@ main()
         printf("object expected\n");
         return 1;
     }
-
    
 	const unsigned initial_size = 256;
     struct hashmap_s hashmap;
@@ -600,12 +651,7 @@ main()
                     {
                         pAPI->Parameters[iParams].Name =
                             (LPCSTR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, t[d+1].end - t[d+1].start + 1);
-						
-						RtlCopyMemory(
-                            (PVOID)pAPI->Parameters[iParams].Name,
-                            JSON_STRING + t[d + 1].start,
-                            t[d + 1].end - t[d + 1].start);
-                    
+						RtlCopyMemory((PVOID)pAPI->Parameters[iParams].Name, JSON_STRING + t[d + 1].start, t[d+1].end - t[d+1].start);
                     }
 
 					d += 2;
@@ -688,12 +734,14 @@ main()
             HookBegingTransation();
 
             PVOID Real = GetAPIAddress((PSTR)ModuleInfo->APIList[j],  pLdrEntry->BaseDllName.Buffer);
+            DWORD RealAPIAddress = (DWORD)Real;
             LONG l = DetourAttachEx(&Real, GenericHookHandler, &pRealTrampoline, &pRealTarget, &pRealDetour);
             if (l != NO_ERROR)
             {
                 printf("Detour attach failed");
             }
 
+			printf("Hooking %s\n", ModuleInfo->APIList[j]);
 			HookCommitTransaction();
 
 
@@ -702,13 +750,12 @@ main()
 
 			printf("%s() Hooked, target: 0x%p\n", ModuleInfo->APIList[j], pRealTarget);
 						
-			if (0 != hashmap_put(&hashmapA, pRealTarget, 0, pAPI))
+			if (0 != hashmap_put(&hashmapA, (PVOID)RealAPIAddress, 0, pAPI))
 			{
                 printf("hashmap_put failed\n");
             }
 
         }
-
 
         // Iterate to the next entry.
         pEntry = pEntry->Flink;

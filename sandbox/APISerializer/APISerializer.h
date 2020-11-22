@@ -20,27 +20,31 @@
 typedef enum _PARAM_ANNOTATION
 {
     // The function reads from the buffer. The caller provides the buffer and initializes it.
-    ParamIn,
+    PARAM_IN,
 
     // The function writes to the buffer. If used on the return value or with _deref, the function provides the buffer
     // and initializes it. Otherwise, the caller provides the buffer and the function initializes it.
-    ParamOut,
+    PARAM_OUT,
 
     // The function both reads from and writes to buffer. The caller provides the buffer and initializes it.
     // If used with _deref, the buffer may be reallocated by the function.
-    ParamInOut,
+    PARAM_IN_OUT,
 
-	ParamReserved,
+	PARAM_RESERVED,
 } PARAM_ANNOTATION,
     *PPARAM_ANNOTATION;
 
 
-typedef enum _TYPE_PARAM
+typedef enum _PARAM_TYPE
 {
-    TypeImmediate,
-    TypePointerToImmediate,
-    TypeValuePointerToString,
-    TypePointerToStruct
+	PARAM_IMM,
+	PARAM_PTR_IMM,
+    PARAM_ASCII_STR,
+    PARAM_WIDE_STR,
+    PARAM_ARR_ASCII_STR,
+    PARAM_ARR_WIDE_STR,
+	PARAM_PTR_STRUCT,
+	PARAM_BYTE_PTR
 } TYPE_PARAM;
 
 typedef enum _TYPE_RETURN_VALUE
