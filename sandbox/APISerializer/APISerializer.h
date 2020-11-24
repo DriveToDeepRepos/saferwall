@@ -6,10 +6,37 @@
 #define NTDLL_NO_INLINE_INIT_STRING
 #include "ntdll.h"
 
+
+//
+// Network
+//
+
+#include <wininet.h>
+#pragma comment(lib, "Wininet.lib")
+
+// COM
+////#include <comdef.h>
+//#include <Wbemidl.h>
+//#pragma comment(lib, "wbemuuid.lib")
+
+
+//
+// WinCrypt
+//
+#include <Wincrypt.h>
+
+
 //
 // For program instrumentation.
 //
 #include <detours.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <intrin.h>
+
+#include "util.h"
 
 //
 // New
@@ -62,7 +89,7 @@ typedef struct _API_PARAM
 
 typedef struct _API
 {
-    BOOL ReturnVoid;
+    BOOL ReturnNonVoid;
     LPCSTR Name;
     UCHAR cParams;
     PAPI_PARAM Parameters;
@@ -77,4 +104,48 @@ typedef struct _MODULE_INFO
     UINT cAPIs;
 } MODULE_INFO, *PMODULE_INFO;
 
-// Delclare a hashmap <DWORD_PTR> -> PVOID / PAPI
+
+
+//
+// Defines.
+//
+
+#define TEST_FILE_HOOKS TRUE
+#define TEST_LIB_LOAD_HOOKS TRUE
+#define TEST_MEMORY_HOOKS FALSE
+#define TEST_NETWORK_HOOKS TRUE
+#define TEST_OLE_HOOKS FALSE
+#define TEST_PROCESS_THREADS_HOOKS FALSE
+#define TEST_REGISTRY_HOOKS FALSE
+#define TEST_SYNC_HOOKS FALSE
+#define TEST_WINSVC_HOOKS FALSE
+#define TEST_WINCRYPT_HOOKS FALSE
+
+//
+// Prototypes
+//
+
+VOID
+GetRandomString(PWCHAR Str, CONST INT Len);
+VOID
+GetRandomDir(PWSTR szPathOut);
+VOID
+GetRandomFilePath(PWSTR szPathOut);
+DWORD
+PrintError(const char *wszProcedureName);
+VOID
+TestFileHooks();
+VOID
+TestLibLoadHooks();
+VOID
+TestMemoryHooks();
+VOID
+TestNetworkHooks();
+VOID
+TestOleHooks();
+VOID
+TestRegistryHooks();
+VOID
+TestWinSvcHooks();
+VOID
+TestWinCryptHooks();

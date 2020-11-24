@@ -15,10 +15,6 @@
 #include "APISerializer.h"
 #include "hashmap.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <intrin.h>
 
 
 typedef struct _HOOK_CONTEXT
@@ -35,8 +31,12 @@ struct hashmap_s hashmapA;
 
 
 extern "C" {
-DWORD __stdcall GetBasePointer();
-DWORD __stdcall HookHandler();
+DWORD __stdcall GetBasePointer(VOID);
+DWORD __stdcall GetESP(VOID);
+DWORD __stdcall HookHandler(VOID);
+DWORD __stdcall PushIntoStack(DWORD_PTR);
+DWORD_PTR __stdcall AsmCall(PVOID, UCHAR, DWORD_PTR);
+VOID __stdcall AsmPopStack(VOID);
 }
 
 
@@ -323,110 +323,153 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr)
 }
 
 
-extern "C" __declspec(noinline) PCHAR WINAPI TraceAPI(DWORD_PTR BasePointer, PAPI pAPI)
+extern "C" __declspec(noinline) PCHAR WINAPI PreHookTraceAPI(PCHAR szLog, PAPI pAPI, DWORD_PTR StackPointer)
 {
-    CHAR buff[MAX_PATH] = "";
-    CHAR out[MAX_PATH] = "";
+    INT len;
+    PCHAR szBuff = (PCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
+
     for (int i = 0; i < pAPI->cParams; i++)
     {
-
-		DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + (i * 4));
+        DWORD_PTR Param = *(DWORD_PTR *)(StackPointer+4 + (i * 4));
         switch (pAPI->Parameters[i].Annotation)
         {
         case PARAM_IN:
+        case PARAM_IN_OUT:
             switch (pAPI->Parameters[i].Type)
             {
             case PARAM_IMM:
-                _snprintf(buff, sizeof(buff), "%s:%lu", (PCHAR)pAPI->Parameters[i].Name, Param);
+                _snprintf(szBuff, sizeof(szBuff), "%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, Param);
+                break;
             case PARAM_PTR_IMM:
                 _snprintf(
-                    buff,
-                    sizeof(buff),
-                   "%s:%lu",
+                    szBuff,
+                    sizeof(szBuff),
+                    "%s:%lu, ",
                     (PCHAR)pAPI->Parameters[i].Name,
-                    *(DWORD_PTR *)(BasePointer + (i * 4)));
+                    *(DWORD_PTR *)Param);
+                break;
+            case PARAM_ASCII_STR:
+                _snprintf(szBuff, MAX_PATH, "%s:%s, ", (PCHAR)pAPI->Parameters[i].Name, (PCHAR)Param);
+                break;
+            case PARAM_WIDE_STR:
+                _snprintf(szBuff, MAX_PATH, "%s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+				break;
+            case PARAM_PTR_STRUCT:
+                _snprintf(szBuff, MAX_PATH, "%s:%jx, ", (PCHAR)pAPI->Parameters[i].Name, Param);
+                break;
+            default:
+                printf("Unknown");
+                break;
+            }
+
+		strncat(szLog, szBuff, strlen(szBuff));
+        RtlZeroMemory(szBuff, sizeof(szBuff));
+		}
+	}
+
+	RtlFreeHeap(RtlProcessHeap(), 0, szBuff);
+	return szLog;
+}
+
+
+// Log Return Value and __Out__ Buffers.
+extern "C" __declspec(noinline) PCHAR WINAPI
+    PostHookTraceAPI(PAPI pAPI, DWORD_PTR StackPointer , PCHAR szLog, DWORD_PTR ReturnValue)
+{
+    INT len;
+    PCHAR szBuff = (PCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
+
+    for (int i = 0; i < pAPI->cParams; i++)
+    {
+        DWORD_PTR Param = *(DWORD_PTR *)(StackPointer + (i * 4));
+        switch (pAPI->Parameters[i].Annotation)
+        {
+        case PARAM_OUT:
+        case PARAM_IN_OUT:
+            switch (pAPI->Parameters[i].Type)
+            {
+            case PARAM_IMM:
+                _snprintf(szBuff, sizeof(szBuff), "out: %s:%lu", (PCHAR)pAPI->Parameters[i].Name, Param);
+                break;
+            case PARAM_PTR_IMM:
+                _snprintf(
+                    szBuff,
+                    sizeof(szBuff),
+                    "out: %s:%lu",
+                    (PCHAR)pAPI->Parameters[i].Name,
+                    Param);
+                break;
             case PARAM_ASCII_STR:
                 _snprintf(
-                    buff, sizeof(buff), "%s:%s", (PCHAR)pAPI->Parameters[i].Name, (PCHAR)(BasePointer + (i * 4)));
+                    szBuff,
+                    sizeof(szBuff),
+                    "out: %s:%s",
+                    (PCHAR)pAPI->Parameters[i].Name,
+                    Param);
+                break;
             case PARAM_WIDE_STR:
-                _snprintf(buff, MAX_PATH, "%s:%ws", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+                _snprintf(szBuff, MAX_PATH, "out: %s:%ws", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+                break;
             case PARAM_PTR_STRUCT:
-                _snprintf(buff, sizeof(buff), "%s:0x%p", (PCHAR)pAPI->Parameters[i].Name, Param);
+                _snprintf(szBuff, sizeof(szBuff), "out: %s:0x%p", (PCHAR)pAPI->Parameters[i].Name, (PVOID)Param);
+                break;
             default:
                 break;
             }
-		
-		}
-        strncat(out, buff, strlen(buff));
-        strcat(out, ", ");
-	}
 
-	return out;
+		strncat(szLog, szBuff, strlen(szBuff));
+        }
+
+    }
+
+
+	if (pAPI->ReturnNonVoid )
+    {
+        _snprintf(szLog, MAX_PATH, ") => 0x%p", ReturnValue);
+    }
+    else
+    {
+        strcat(szLog, " => void");
+    }
+
+	RtlFreeHeap(RtlProcessHeap(), 0, szBuff);
+
+    return szLog;
 }
 
-VOID WINAPI
+extern "C" VOID WINAPI
 GenericHookHandler()
 {
-    PAPI pAPI = GetTargetAPI((DWORD_PTR)_ReturnAddress());
-    DWORD ebp = GetBasePointer();
+	// Save the previous subroutine base pointer.
+    DWORD_PTR CallerStackFrame = GetBasePointer() + 4;
 
-    // DWORD_PTR *Param1 = (DWORD_PTR *)(ebp + 8);
-    //   DWORD_PTR *Param2 = (DWORD_PTR *)(ebp + 0xC);
-    //   printf("%ws", *Param1);
+	// Get the target API.
+    PAPI pAPI = GetTargetAPI((DWORD_PTR)_ReturnAddress());
 
     // Are we called from inside a our own hook handler.
-    //
     if (IsInsideHook() || IsCalledFromSystemMemory((DWORD_PTR)_ReturnAddress()))
     {
-        printf("IsInsideHook()\n");
+		// Call the Real API.
+        AsmCall(pAPI->RealTarget, pAPI->cParams, CallerStackFrame + 4);
+        return;
     }
 
-    if (IsCalledFromSystemMemory((DWORD_PTR)_ReturnAddress()))
-    {
-        printf("Called from system memory!\n");
-    }
+	// Allocate space to log the API.
+    PCHAR szLog = (PCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
 
-    printf("API Name: %s, target: 0x%p\n", pAPI->Name, pAPI->RealTarget);
+	// Append the API name.
+    snprintf(szLog, MAX_PATH, "%s(", pAPI->Name);
 
-    CHAR log[MAX_PATH] = "";
-    CHAR tmp[MAX_PATH] = "";
-    snprintf(log, MAX_PATH, "%s(", pAPI->Name);
-    CHAR *p = TraceAPI(ebp + 8, pAPI);
-    strncpy(tmp, p, strlen(p));
-    strcat(tmp, ")");
-	strncat(log, tmp, MAX_PATH);
-    printf("");
-}
+    // Pre Hooking.
+	PreHookTraceAPI(szLog, pAPI, CallerStackFrame);
 
-VOID
-GetRandomString(PWCHAR Str, CONST INT Len)
-{
-    static CONST WCHAR AlphaNum[] = L"0123456789"
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                                    "abcdefghijklmnopqrstuvwxyz";
+	// Finally perform the call.
+    DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, CallerStackFrame+4);
 
-    for (INT i = 0; i < Len; ++i)
-    {
-        Str[i] = AlphaNum[rand() % (wcslen(AlphaNum) - 1)];
-    }
+	// Log Post Hooking.
+	PostHookTraceAPI(pAPI, CallerStackFrame + 4, szLog, RetValue);
 
-    Str[Len] = 0;
-}
-
-VOID
-GetRandomDir(PWSTR szPathOut)
-{
-    DWORD Count;
-    WCHAR TempPath[MAX_PATH] = L"";
-    WCHAR RandomName[MAX_PATH] = L"";
-
-    Count = GetTempPath(MAX_PATH, TempPath);
-    if (!Count)
-    {
-        printf("GetTempPath");
-    }
-    GetRandomString(RandomName, 8);
-    PathCombineW(szPathOut, TempPath, RandomName);
+    printf("%s\n", szLog);
 }
 
 PVOID
@@ -612,7 +655,7 @@ main()
 			// Get the return type.
 			if (RtlEqualMemory(JSON_STRING + t[++d].start, "true", 4))
             {
-                pAPI->ReturnVoid = true;
+                pAPI->ReturnNonVoid = true;
             }
 
 			// Skip size value.
@@ -735,7 +778,7 @@ main()
 
             PVOID Real = GetAPIAddress((PSTR)ModuleInfo->APIList[j],  pLdrEntry->BaseDllName.Buffer);
             DWORD RealAPIAddress = (DWORD)Real;
-            LONG l = DetourAttachEx(&Real, GenericHookHandler, &pRealTrampoline, &pRealTarget, &pRealDetour);
+            LONG l = DetourAttachEx(&Real, HookHandler, &pRealTrampoline, &pRealTarget, &pRealDetour);
             if (l != NO_ERROR)
             {
                 printf("Detour attach failed");
@@ -762,18 +805,7 @@ main()
     }
 
 
-	WCHAR szFilePath[MAX_PATH] = L"";
-    WCHAR szDestFilePath[MAX_PATH] = L"";
-    HANDLE hFile;
-    BOOL bResult;
-    WCHAR Buffer[] = L"Life is short.";
-    DWORD dwNumberOfBytesWritten = NULL;
+	TestFileHooks();
 
-    printf(" ========= Testing file opeations ========= \n\n");
-
-    wprintf(L"[+] Calling CreateDirectoryW\n");
-    GetRandomDir(szFilePath);
-    CreateDirectory(szFilePath, NULL);
-	printf("\nDone !");
     return 0;
 }
