@@ -11,7 +11,7 @@ EXTERN IsInsideHook@0 : PROC
 EXTERN IsCalledFromSystemMemory@4: PROC
 EXTERN PreHookTraceAPI@12 : PROC
 EXTERN PostHookTraceAPI@16 : PROC
-EXTERN GenericHookHandler@0: PROC
+EXTERN GenericHookHandler@8: PROC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -62,43 +62,13 @@ AsmCall endp
 
 HookHandler proc
 
-    CALL GenericHookHandler@0
+   mov ebx, dword ptr [esp]
+   call GenericHookHandler@8
+   sub esp, 8
 
-   push dword ptr [esp] ; Get the caller return address which sits on top of the stack.
-   call GetTargetAPI@4    ; Upon return, eax -> pAPI.
-   mov esi, eax
+   add esp, 8 ; quick hack
+   mov dword ptr [esp], ebx
 
-   call IsInsideHook@0
-   test eax,eax
-   jne CALL_REAL
-
-   push dword ptr [ebp+4] ; push base pointer for local vars ref.
-   call IsCalledFromSystemMemory@4
-   test eax,eax
-   je LOG_API
-
-CALL_REAL:
-    jmp dword ptr [esi+14h]
-    ret
-
-LOG_API:
-    push esp
-    push esi
-    call PreHookTraceAPI@12
-    mov ebx, eax
-
-    ; make the code return to our address
-    mov edi, dword ptr [esp] ; 
-    mov dword ptr [esp], offset RETURN_HERE
-    jmp dword ptr [esi+14h] ; Call the real API.
-RETURN_HERE:
-    sub esp, 12
-    push eax
-    push ebx
-    push esi
-    push edi
-    call PostHookTraceAPI@16
-    mov dword ptr [esp], edi ; restore return addr.
     ret
 
 HookHandler endp

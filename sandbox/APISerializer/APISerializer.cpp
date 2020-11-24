@@ -35,7 +35,7 @@ DWORD __stdcall GetBasePointer(VOID);
 DWORD __stdcall GetESP(VOID);
 DWORD __stdcall HookHandler(VOID);
 DWORD __stdcall PushIntoStack(DWORD_PTR);
-DWORD_PTR __stdcall AsmCall(PVOID, UCHAR, DWORD_PTR);
+DWORD_PTR __stdcall AsmCall(PVOID, UCHAR, DWORD_PTR*);
 VOID __stdcall AsmPopStack(VOID);
 }
 
@@ -313,8 +313,6 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr)
     if (*byte1 == 0xFF && *byte2 == 0x15)
     {
         Target = **((DWORD_PTR **)(RetAddr - 4));
-        printf("0x%08x\n", Target);
-
         pAPI = (PAPI)hashmap_get(&hashmapA, (PVOID)Target, 0);
         return pAPI;
     }
@@ -323,14 +321,14 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr)
 }
 
 
-extern "C" __declspec(noinline) PCHAR WINAPI PreHookTraceAPI(PCHAR szLog, PAPI pAPI, DWORD_PTR StackPointer)
+extern "C" __declspec(noinline) PCHAR WINAPI PreHookTraceAPI(PCHAR szLog, PAPI pAPI, DWORD_PTR* BasePointer)
 {
     INT len;
     PCHAR szBuff = (PCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
 
     for (int i = 0; i < pAPI->cParams; i++)
     {
-        DWORD_PTR Param = *(DWORD_PTR *)(StackPointer+4 + (i * 4));
+        DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + i);
         switch (pAPI->Parameters[i].Annotation)
         {
         case PARAM_IN:
@@ -355,7 +353,7 @@ extern "C" __declspec(noinline) PCHAR WINAPI PreHookTraceAPI(PCHAR szLog, PAPI p
                 _snprintf(szBuff, MAX_PATH, "%s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
 				break;
             case PARAM_PTR_STRUCT:
-                _snprintf(szBuff, MAX_PATH, "%s:%jx, ", (PCHAR)pAPI->Parameters[i].Name, Param);
+                _snprintf(szBuff, MAX_PATH, "%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, Param);
                 break;
             default:
                 printf("Unknown");
@@ -374,14 +372,14 @@ extern "C" __declspec(noinline) PCHAR WINAPI PreHookTraceAPI(PCHAR szLog, PAPI p
 
 // Log Return Value and __Out__ Buffers.
 extern "C" __declspec(noinline) PCHAR WINAPI
-    PostHookTraceAPI(PAPI pAPI, DWORD_PTR StackPointer , PCHAR szLog, DWORD_PTR ReturnValue)
+    PostHookTraceAPI(PAPI pAPI, DWORD_PTR* BasePointer , PCHAR szLog, DWORD_PTR ReturnValue)
 {
     INT len;
     PCHAR szBuff = (PCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
 
     for (int i = 0; i < pAPI->cParams; i++)
     {
-        DWORD_PTR Param = *(DWORD_PTR *)(StackPointer + (i * 4));
+        DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + i);
         switch (pAPI->Parameters[i].Annotation)
         {
         case PARAM_OUT:
@@ -438,19 +436,16 @@ extern "C" __declspec(noinline) PCHAR WINAPI
 }
 
 extern "C" VOID WINAPI
-GenericHookHandler()
+GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
 {
-	// Save the previous subroutine base pointer.
-    DWORD_PTR CallerStackFrame = GetBasePointer() + 4;
-
 	// Get the target API.
-    PAPI pAPI = GetTargetAPI((DWORD_PTR)_ReturnAddress());
+    PAPI pAPI = GetTargetAPI(ReturnAddress);
 
     // Are we called from inside a our own hook handler.
-    if (IsInsideHook() || IsCalledFromSystemMemory((DWORD_PTR)_ReturnAddress()))
+    if (IsInsideHook() || IsCalledFromSystemMemory(ReturnAddress))
     {
 		// Call the Real API.
-        AsmCall(pAPI->RealTarget, pAPI->cParams, CallerStackFrame + 4);
+        AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
         return;
     }
 
@@ -461,15 +456,17 @@ GenericHookHandler()
     snprintf(szLog, MAX_PATH, "%s(", pAPI->Name);
 
     // Pre Hooking.
-	PreHookTraceAPI(szLog, pAPI, CallerStackFrame);
+	PreHookTraceAPI(szLog, pAPI, &CallerStackFrame);
 
 	// Finally perform the call.
-    DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, CallerStackFrame+4);
+    DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
 
 	// Log Post Hooking.
-	PostHookTraceAPI(pAPI, CallerStackFrame + 4, szLog, RetValue);
+    PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
 
     printf("%s\n", szLog);
+
+	ReleaseHookGuard();
 }
 
 PVOID
