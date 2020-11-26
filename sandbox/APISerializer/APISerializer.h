@@ -89,7 +89,7 @@ typedef struct _API_PARAM
 
 typedef struct _API
 {
-    BOOL ReturnNonVoid;
+    BOOL ReturnVoid;
     LPCSTR Name;
     UCHAR cParams;
     PAPI_PARAM Parameters;
@@ -139,7 +139,7 @@ VOID
 TestLibLoadHooks();
 VOID
 TestMemoryHooks();
-VOID
+BOOL
 TestNetworkHooks();
 VOID
 TestOleHooks();

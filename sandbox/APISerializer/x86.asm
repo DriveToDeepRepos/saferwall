@@ -6,11 +6,7 @@
 ;
 ; References to C functions
 ;
-EXTERN GetTargetAPI@4 : PROC
-EXTERN IsInsideHook@0 : PROC
-EXTERN IsCalledFromSystemMemory@4: PROC
-EXTERN PreHookTraceAPI@12 : PROC
-EXTERN PostHookTraceAPI@16 : PROC
+
 EXTERN GenericHookHandler@8: PROC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -19,22 +15,11 @@ EXTERN GenericHookHandler@8: PROC
 ;
 .CODE
 
-
-GetBasePointer proc
-    mov eax, ebp
+AsmReturn PROC cParams, ReturnValue
+    mov ecx, cParams
+    mov eax, ReturnValue
     ret
-GetBasePointer endp
-
-
-PushIntoStack PROC value
-    push value
-    ret
-PushIntoStack endp
-
-GetESP PROC
-    mov eax, esp
-    ret
-GetESP endp
+AsmReturn endp
 
 AsmCall PROC target, cParams, callerStackFrame
 
@@ -58,22 +43,21 @@ CALL_API:
     ret
 AsmCall endp
 
-    
+   
 
 HookHandler proc
 
-   mov ebx, dword ptr [esp]
    call GenericHookHandler@8
    sub esp, 8
 
-   add esp, 8 ; quick hack
-   mov dword ptr [esp], ebx
+   mov edx, dword ptr [esp]
+   imul ecx, 4
+   add esp, ecx
+   mov dword ptr [esp],  edx
 
     ret
 
 HookHandler endp
-
-
 
 
 end
