@@ -137,7 +137,7 @@ VOID
 TestFileHooks();
 VOID
 TestLibLoadHooks();
-VOID
+BOOL
 TestMemoryHooks();
 BOOL
 TestNetworkHooks();
@@ -149,3 +149,5 @@ VOID
 TestWinSvcHooks();
 VOID
 TestWinCryptHooks();
+VOID
+TestProcessThreadHooks();

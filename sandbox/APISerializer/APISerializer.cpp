@@ -301,7 +301,7 @@ MultiByteToWide(CHAR *lpMultiByteStr)
 }
 
 
-extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr)
+extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCONTEXT pContext)
 {
     DWORD_PTR Target, Displacement;
     PAPI pAPI = NULL;
@@ -313,12 +313,6 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr)
     {
         Target = **((DWORD_PTR **)(RetAddr - 4));
         pAPI = (PAPI)hashmap_get(&hashmapA, (PVOID)Target, 0);
-        if (pAPI == NULL)
-        {
-            Target = **((DWORD_PTR **)(Target + 2));
-            pAPI = (PAPI)hashmap_get(&hashmapA, (PVOID)Target, 0);
-
-		}
     }
 
 	// CALL NEAR, RELATIVE
@@ -327,17 +321,34 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr)
         Displacement = *((DWORD_PTR *)(RetAddr - 4));
         Target = RetAddr + Displacement;
         pAPI = (PAPI)hashmap_get(&hashmapA, (PVOID)Target, 0);
-        if (pAPI == NULL)
-        {
-            printf("NEAR RELATIVE PAPI NULL");
-            __debugbreak();
-        }
 
+    }
+	// CALL ESI
+    else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd6)
+    {
+        Target = pContext->Esi;
+        pAPI = (PAPI)hashmap_get(&hashmapA, (PVOID)Target, 0);
+	}
+	// call EDI
+    else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd7)
+    {
+        Target = pContext->Edi;
+        pAPI = (PAPI)hashmap_get(&hashmapA, (PVOID)Target, 0);
     }
     else
     {
         printf("Could not find Caller for ReturnAddress: 0x%x, byte1: 0x%x, byte2: 0x%x\n", RetAddr, byte1, byte2);
 	}
+
+	if (pAPI == NULL)
+    {
+		// JMP to a JMP.
+        Target = **((DWORD_PTR **)(Target + 2));
+        pAPI = (PAPI)hashmap_get(&hashmapA, (PVOID)Target, 0);
+		// pAPI is still NULL, warn !
+        if (!pAPI)
+			printf("pAPI is NULL 0x%x\n", RetAddr);
+    }
 
     return pAPI;
 }
@@ -479,28 +490,30 @@ extern "C" __declspec(noinline) PCHAR WINAPI
 extern "C" VOID WINAPI
 GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
 {
-    DWORD_PTR RetValue = 0;
 
-	// Allocate space to log the API.
-    PCHAR szLog = (PCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
+	CONTEXT Context = {0};
+    RtlCaptureContext(&Context); 
 
 	// Get the target API.
-    PAPI pAPI = GetTargetAPI(ReturnAddress);
+    PAPI pAPI = GetTargetAPI(ReturnAddress, &Context);
 	if (!pAPI)
     {
         printf("Could not find API!\n");
-        GetTargetAPI(ReturnAddress);
+        GetTargetAPI(ReturnAddress, &Context);
 	}
 
     // Are we called from inside a our own hook handler.
-    if (IsInsideHook() || IsCalledFromSystemMemory(ReturnAddress))
+    if (IsCalledFromSystemMemory(ReturnAddress) || IsInsideHook())
     {
 		// Call the Real API.
         printf("Skipping call to %s\n", pAPI->Name);
-        AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
+        DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
         AsmReturn(pAPI->cParams, RetValue);
         return;
     }
+
+	// Allocate space to log the API.
+    PCHAR szLog = (PCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, 1024);
 
 	// Append the API name.
     snprintf(szLog, MAX_PATH, "%s(", pAPI->Name);
@@ -509,19 +522,19 @@ GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
 	PreHookTraceAPI(szLog, pAPI, &CallerStackFrame);
 
 	// Finally perform the call.
-    RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
+    DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
 
 	// Log Post Hooking.
     PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
 
     printf("%s\n", szLog);
+	RtlFreeHeap(RtlProcessHeap(), 0, szLog);
 
 	// Releasing our hook guard.
 	ReleaseHookGuard();
 
 	// Set eax to RetValue, and ecx to cParams so we know how to adjust the stack.
     AsmReturn(pAPI->cParams, RetValue);
-
 }
 
 PVOID
@@ -621,8 +634,8 @@ main()
     }
 
     // Read a json file
-    //const char *filename = "C:\\coding\\saferwall-sandbox\\sandbox\\src\\sdk2json\\mini-apis.json";
-    const char *filename = "mini-apis.json";
+    const char *filename = "C:\\coding\\saferwall-sandbox\\sandbox\\src\\sdk2json\\mini-apis.json";
+    //const char *filename = "mini-apis.json";
     char *JSON_STRING = ReadMyFile(filename);
 
     jsmn_init(&p);
@@ -870,5 +883,17 @@ main()
     TestLibLoadHooks();
     TestRegistryHooks();
     TestNetworkHooks();
+    TestProcessThreadHooks();
+    TestMemoryHooks();
+    TestWinSvcHooks();
+
+
+	// Cleanup
+    //hashmap_destroy(&hashmap);
+    //hashmap_destroy(&hashmapA);
+    //hashmap_destroy(&hashmapM);
+
+	printf("\n\nDone ! Byte ...\n");
+
     return 0;
 }
