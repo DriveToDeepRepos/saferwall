@@ -33,16 +33,16 @@
 // Defines.
 //
 
-#define TEST_FILE_HOOKS FALSE
-#define TEST_LIB_LOAD_HOOKS FALSE
+#define TEST_FILE_HOOKS TRUE
+#define TEST_LIB_LOAD_HOOKS TRUE
 #define TEST_MEMORY_HOOKS FALSE
-#define TEST_NETWORK_HOOKS FALSE
+#define TEST_NETWORK_HOOKS TRUE
 #define TEST_OLE_HOOKS FALSE
 #define TEST_PROCESS_THREADS_HOOKS FALSE
 #define TEST_REGISTRY_HOOKS FALSE
 #define TEST_SYNC_HOOKS FALSE
-#define TEST_WINSVC_HOOKS TRUE
-#define TEST_WINCRYPT_HOOKS TRUE
+#define TEST_WINSVC_HOOKS FALSE
+#define TEST_WINCRYPT_HOOKS FALSE
 
 //
 // Prototypes
@@ -60,9 +60,9 @@ VOID
 TestFileHooks();
 VOID
 TestLibLoadHooks();
-VOID
+BOOL
 TestMemoryHooks();
-VOID
+BOOL
 TestNetworkHooks();
 VOID
 TestOleHooks();
@@ -72,3 +72,7 @@ VOID
 TestWinSvcHooks();
 VOID
 TestWinCryptHooks();
+VOID
+TestProcessThreadHooks();
+BOOL
+TestWinhttpHooks();

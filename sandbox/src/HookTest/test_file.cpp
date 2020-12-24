@@ -1,4 +1,4 @@
-#include "header.h"
+#include "APISerializer.h"
 
 VOID
 TestFileHooks()
@@ -10,7 +10,7 @@ TestFileHooks()
     WCHAR Buffer[] = L"Life is short.";
     DWORD dwNumberOfBytesWritten = NULL;
 
-    wprintf(L" ========= Testing file opeations ========= \n\n");
+    wprintf(L"\n ========= Testing file opeations ========= \n\n");
 
     wprintf(L"[+] Calling CreateDirectoryW\n");
     GetRandomDir(szFilePath);
@@ -38,6 +38,8 @@ TestFileHooks()
     {
 		PrintError("WriteFileW");
     }
+
+    wprintf(L"[+] Calling CloseHandle\n");
     CloseHandle(hFile);
 
     wprintf(L"[+] Calling MoveFileW\n");

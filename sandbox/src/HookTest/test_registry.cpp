@@ -1,4 +1,4 @@
-#include "header.h"
+#include "APISerializer.h"
 
 #define TOTALBYTES 8192
 #define BYTEINCREMENT 4096
@@ -42,41 +42,49 @@ WriteRegistryKey(HKEY hKey, PWCHAR pSubKey, PWCHAR pValueName, PWCHAR strData)
     dwRet = RegSetValueEx(hKey, pValueName, 0, REG_SZ, (LPBYTE)(strData), ((((DWORD)lstrlen(strData) + 1)) * 2));
     if (ERROR_SUCCESS != dwRet)
     {
-        RegCloseKey(hKey);
 		PrintError("RegSetValueEx");
+        RegCloseKey(hKey);
     }
 }
 
 VOID
 ReadRegistryKey(HKEY hKey, PWCHAR pSubKey, PWCHAR pValueName)
 {
-    PVOID pData;
+    PVOID pData, pOldData;
     DWORD dwRet, pcbData = 0;
     DWORD BufferSize = TOTALBYTES;
 
     pData = malloc(BufferSize);
-    dwRet = RegQueryValueEx(hKey, pValueName, NULL, NULL, (BYTE *)pData, &pcbData);
-    while (dwRet == ERROR_MORE_DATA)
-    {
-        BufferSize += BYTEINCREMENT;
-        pData = realloc(pData, BufferSize);
-        pcbData = BufferSize;
+    if (pData) {
         dwRet = RegQueryValueEx(hKey, pValueName, NULL, NULL, (BYTE *)pData, &pcbData);
-    }
+        while (dwRet == ERROR_MORE_DATA)
+        {
+            BufferSize += BYTEINCREMENT;
+            pOldData = pData;
+            pData = realloc(pOldData, BufferSize);
+            if (pData)
+            {
+                pcbData = BufferSize;
+                dwRet = RegQueryValueEx(hKey, pValueName, NULL, NULL, (BYTE *)pData, &pcbData);
+			}
 
-    if (dwRet != ERROR_SUCCESS)
-    {
-        RegCloseKey(hKey);
-		PrintError("RegQueryValueEx");
-    }
+        }
+
+        if (dwRet != ERROR_SUCCESS)
+        {
+            PrintError("RegQueryValueEx");
+            RegCloseKey(hKey);
+        }
+	}
+ 
 }
 
 VOID
 TestRegistryHooks()
 {
-    wprintf(L" ========= Testing registry opeations ========= \n\n");
+    wprintf(L"\n ========= Testing registry opeations ========= \n\n");
 
-    HKEY hKey;
+	HKEY hKey;
     WCHAR pSubKey[MAX_PATH] = L"";
     WCHAR szValueName[MAX_PATH] = L"Thinking Binary";
     WCHAR szValueToWrite[MAX_PATH] = L"there are 10 types of people in this world, "

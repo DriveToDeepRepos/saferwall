@@ -43,7 +43,7 @@ TestNetworkHooks()
         wprintf(L"Failed Request\n");
     }
 
-    HttpSendRequestA(hHttpFile, NULL, 0, 0, 0);
+    HttpSendRequestA(hHttpFile, NULL, 0, 0, 0); 
 
     CHAR szBuffer[4096 * 10] = "";
     DWORD dwRead = 0;

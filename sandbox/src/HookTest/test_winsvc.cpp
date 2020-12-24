@@ -1,11 +1,11 @@
-#include "header.h"
+#include "APISerializer.h"
 
 #define SVCNAME L"saferwall"
 
 VOID
 TestWinSvcHooks()
 {
-	wprintf(L" ========= Testing winsvc opeations ========= \n\n");
+	wprintf(L"\n ========= Testing winsvc opeations ========= \n\n");
 
 	wprintf(L"[+] Calling CreateServiceW\n");
 

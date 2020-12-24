@@ -1,4 +1,10 @@
-#include "header.h"
+#include<Windows.h>
+#include <stdio.h>
+#include <shlwapi.h>
+#pragma comment(lib, "shlwapi.lib")
+
+#include "util.h"
+
 
 DWORD
 PrintError(const char *wszProcedureName)
@@ -72,7 +78,7 @@ GetRandomDir(PWSTR szPathOut)
     {
 		PrintError("GetTempPath");
     }
-    GetRandomString(RandomName, 8);
+    GetRandomString(RandomName, 20);
     PathCombineW(szPathOut, TempPath, RandomName);
 }
 
