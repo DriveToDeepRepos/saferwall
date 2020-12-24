@@ -6,7 +6,7 @@
 #pragma comment(lib, "Wininet.lib")
 
 BOOL
-TestNetworkHooks()
+TestWinInetHooks()
 {
     wprintf(L"\n ========= Testing network opeations ========= \n\n");
 
