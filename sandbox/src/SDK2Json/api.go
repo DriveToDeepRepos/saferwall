@@ -9,13 +9,13 @@ import (
 
 const (
 	// RegAPIs is a regex that extract API prototypes.
-	RegAPIs = `(_Success_|HANDLE|INTERNETAPI|BOOLAPI|BOOL|STDAPI|WINUSERAPI|WINBASEAPI|WINADVAPI|NTSTATUS|_Must_inspect_result_|BOOLEAN)[\d\w\s\)\(,\[\]\!*+=&<>/|]+;`
+	RegAPIs = `(_Success_|HANDLE|INTERNETAPI|WINHTTPAPI|BOOLAPI|BOOL|STDAPI|WINUSERAPI|WINBASEAPI|WINADVAPI|NTSTATUS|_Must_inspect_result_|BOOLEAN)[\d\w\s\)\(,\[\]\!*+=&<>/|]+;`
 
 	// RegProto extracts API information.
 	RegProto = `(?P<Attr>WINBASEAPI|WINADVAPI)?( )?(?P<RetValType>[A-Z]+) (?P<CallConv>WINAPI|APIENTRY) (?P<ApiName>[a-zA-Z0-9]+)( )?\((?P<Params>.*)\);`
 
 	// RegAPIParams parses params.
-	RegAPIParams = `(?P<Anno>_In_|_In_opt_|_Inout_opt_|_Out_|_Inout_|_Out_opt_|_Outptr_opt_|_Reserved_|_Out[\w(),+ *]+|_In[\w()]+) (?P<Type>[\w *]+) (?P<Name>[*a-zA-Z0-9]+)`
+	RegAPIParams = `(?P<Anno>_In_|IN|OUT|_In_opt_|_Inout_opt_|_Out_|_Inout_|_Out_opt_|_Outptr_opt_|_Reserved_|_(O|o)ut[\w(),+ *]+|_In[\w()]+|_When[\w() =,!*]+) (?P<Type>[\w *]+) (?P<Name>[*a-zA-Z0-9]+)`
 )
 
 // APIParam represents a paramter of a Win32 API.
@@ -27,12 +27,12 @@ type APIParam struct {
 
 // API represents information about a Win32 API.
 type API struct {
-	Attribute         string     `json:"-"`      // Microsoft-specific attribute.
-	CallingConvention string     `json:"-"`      // Calling Convention.
-	Name              string     `json:"-"`      // Name of the API.
-	Params            []APIParam `json:"params"` // API Arguments.
-	CountParams       uint8      `json:"-"`      // Count of Params.
-	ReturnValueType   string     `json:"retVal"` // Return value type.
+	Attribute         string     `json:"-"`        // Microsoft-specific attribute.
+	CallingConvention string     `json:"callconv"` // Calling Convention.
+	Name              string     `json:"name"`     // Name of the API.
+	ReturnValueType   string     `json:"retVal"`   // Return value type.
+	Params            []APIParam `json:"params"`   // API Arguments.
+	CountParams       uint8      `json:"-"`        // Count of Params.
 }
 
 func parseAPIParameter(params string) APIParam {
@@ -53,7 +53,7 @@ func parseAPIParameter(params string) APIParam {
 }
 
 func parseAPI(apiPrototype string) API {
-	if strings.Contains(apiPrototype, "Process32NextW") {
+	if strings.Contains(apiPrototype, "WinHttpQueryDataAvailable") {
 		log.Print()
 	}
 	m := regSubMatchToMapString(RegProto, apiPrototype)
@@ -87,7 +87,11 @@ func parseAPI(apiPrototype string) API {
 				if !strings.HasPrefix(vv, "In") &&
 					!strings.HasPrefix(vv, "Out") &&
 					!strings.HasPrefix(vv, "_In") &&
+					!strings.HasPrefix(vv, "IN") &&
+					!strings.HasPrefix(vv, "OUT") &&
 					!strings.HasPrefix(vv, "_Reserved") &&
+					!strings.HasPrefix(vv, "_When") &&
+					!strings.HasPrefix(vv, "__out") &&
 					!strings.HasPrefix(vv, "_Out") {
 					v += " " + split[i+1]
 					split[i+1] = v

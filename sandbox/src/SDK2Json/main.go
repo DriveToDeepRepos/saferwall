@@ -57,6 +57,8 @@ func removeAnnotations(apiPrototype string) string {
 	apiPrototype = strings.Replace(apiPrototype, "_Ret_maybenull_", "", -1)
 	apiPrototype = strings.Replace(apiPrototype, "_Post_writable_byte_size_(dwSize)", "", -1)
 	apiPrototype = strings.Replace(apiPrototype, "__out_data_source(FILE)", "", -1)
+	apiPrototype = strings.Replace(apiPrototype, " OPTIONAL", "", -1)
+
 
 	return apiPrototype
 }
@@ -201,44 +203,6 @@ func main() {
 
 	flag.Parse()
 
-	if *printanno || *minify {
-		data, err := utils.ReadAll("apis.json")
-		if err != nil {
-			log.Fatalln(err)
-		}
-		apis := make(map[string]map[string]API)
-		err = json.Unmarshal(data, &apis)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		if *printanno {
-			var annotations []string
-			var types []string
-			for _, v := range apis {
-				for _, vv := range v {
-					for _, param := range vv.Params {
-						if !utils.StringInSlice(param.Annotation, annotations) {
-							annotations = append(annotations, param.Annotation)
-							// log.Println(param.Annotation)
-						}
-
-						if !utils.StringInSlice(param.Type, types) {
-							types = append(types, param.Type)
-							log.Println(param.Type)
-						}
-					}
-				}
-			}
-		}
-
-		if *minify {
-			data, _ := json.MarshalIndent(minifyAPIs(apis), "", " ")
-			utils.WriteBytesFile("mini-apis.json", bytes.NewReader(data))
-		}
-		os.Exit(0)
-	}
-
 	if *sdkumPath == "" {
 		flag.Usage()
 		os.Exit(0)
@@ -289,10 +253,12 @@ func main() {
 			!strings.HasSuffix(file, "\\memoryapi.h") &&
 			!strings.HasSuffix(file, "\\tlhelp32.h") &&
 			!strings.HasSuffix(file, "\\debugapi.h") &&
+			!strings.HasSuffix(file, "\\handleapi.h") &&
 			!strings.HasSuffix(file, "\\winsvc.h") &&
 			!strings.HasSuffix(file, "\\libloaderapi.h") &&
 			!strings.HasSuffix(file, "\\sysinfoapi.h") &&
 			!strings.HasSuffix(file, "\\winuser.h") &&
+			!strings.HasSuffix(file, "\\winhttp.h") &&
 			!strings.HasSuffix(file, "\\wininet.h") {
 			continue
 		}
@@ -365,9 +331,6 @@ func main() {
 					log.Printf("Not found")
 				}
 				foundAPIs = append(foundAPIs, api)
-				for _, param := range vv.Params {
-					log.Printf("Type: %s\n", param.Type)
-				}
 			}
 		}
 	}
@@ -380,4 +343,43 @@ func main() {
 
 	b, _ := json.MarshalIndent(winStructs, "", " ")
 	utils.WriteBytesFile("structs.json", bytes.NewReader(b))
+
+	if *printanno || *minify {
+		data, err := utils.ReadAll("apis.json")
+		if err != nil {
+			log.Fatalln(err)
+		}
+		apis := make(map[string]map[string]API)
+		err = json.Unmarshal(data, &apis)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		if *printanno {
+			var annotations []string
+			var types []string
+			for _, v := range apis {
+				for _, vv := range v {
+					for _, param := range vv.Params {
+						if !utils.StringInSlice(param.Annotation, annotations) {
+							annotations = append(annotations, param.Annotation)
+							// log.Println(param.Annotation)
+						}
+
+						if !utils.StringInSlice(param.Type, types) {
+							types = append(types, param.Type)
+							log.Println(param.Type)
+						}
+					}
+				}
+			}
+		}
+
+
+		if *minify {
+			data, _ := json.Marshal(minifyAPIs(apis))
+			utils.WriteBytesFile("mini-apis.json", bytes.NewReader(data))
+		}
+		os.Exit(0)
+	}
 }
