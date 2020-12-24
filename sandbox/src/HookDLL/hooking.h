@@ -1,18 +1,5 @@
-#pragma once
-
-#include "hooking.h"
-#include "libloaderapi.h"
-#include "fileapi.h"
-#include "memoryapi.h"
-#include "systemapi.h"
-#include "synchapi.h"
-#include "winregapi.h"
-#include "processthreadsapi.h"
-#include "ntifs.h"
-#include "ole.h"
-#include "net.h"
-#include "winuserapi.h"
-#include "winsvc.h"
+#include "stdafx.h"
+#include "hashmap.h"
 
 //
 // Prototypes
@@ -22,28 +9,17 @@ BOOL
 ProcessAttach();
 BOOL
 ProcessDetach();
-BOOL
-IsInsideHook();
 VOID
 EnterHookGuard();
 VOID
-ReleaseHookGuard();
+SfwReleaseHookGuard();
 BOOL
-HookBegingTransation();
+SfwHookBeginTransation();
 BOOL
-HookCommitTransaction();
+SfwHookCommitTransaction();
 VOID
 HookNtAPIs();
-VOID
-HookOleAPIs(BOOL Attach);
-VOID
-HookNetworkAPIs(BOOL Attach);
-VOID
-HookDll(PWCHAR DllName);
-VOID
-HookWinUserAPIs(BOOL Attach);
-VOID
-HookAdvapi32APIs(BOOL Attach);
+
 //
 // Unfortunatelly sprintf-like functions are not exposed
 // by ntdll.lib, which we're linking against.  We have to
@@ -51,21 +27,28 @@ HookAdvapi32APIs(BOOL Attach);
 //
 
 using __vsnwprintf_fn_t = int(__cdecl *)(wchar_t *buffer, size_t count, const wchar_t *format, ...);
-
 using __snwprintf_fn_t = int(__cdecl *)(wchar_t *buffer, size_t count, const wchar_t *format, ...);
-
+using __snprintf_fn_t = int(__cdecl *)(char *buffer, size_t count, const char *format, ...);
 using strlen_fn_t = size_t(__cdecl *)(char const *buffer);
-
+using memcmp_fn_t = int * (__cdecl *)(const void *buffer1, const void *buffer2, size_t count);
 using pfn_wcsstr = wchar_t *(__cdecl *)(wchar_t *_String, wchar_t const *_SubStr);
+using pfn_wcscat = wchar_t *(__cdecl *)(wchar_t *dest, wchar_t const *src);
+using pfn_wcsncat = wchar_t *(__cdecl *)(wchar_t *dest, wchar_t const *src, size_t count);
+using pfn_wcslen = size_t (__cdecl *)( const wchar_t *str);
+using pfn_wcscmp = int(__cdecl *)(const wchar_t  *string1, const wchar_t  *string2);
+
 
 //
 // Structs
 //
 
-typedef struct HookInfo
+typedef struct _HOOK_CONTEXT
 {
-    BOOL IsOleHooked;
-    BOOL IsWinInetHooked;
-	BOOL IsUser32Hooked;
-	BOOL IsAdvapi32Hooked;
-} HookInfo;
+    DWORD_PTR ModuleBase;
+    DWORD SizeOfImage;
+	struct hashmap_s hashmap;	// Name => pAPI
+    struct hashmap_s hashmapA;	// Target API => pAPI
+    struct hashmap_s hashmapM;	// ModuleName => pModuleInfo
+
+
+} HOOK_CONTEXT, *PHOOK_CONTEXT;

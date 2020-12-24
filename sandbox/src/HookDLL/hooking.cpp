@@ -2,7 +2,7 @@
 //
 
 #include "stdafx.h"
-#include "hooking.h"
+
 
 //
 // Defines
@@ -10,91 +10,38 @@
 
 #define DETOUR_END
 
-//
-// Lib Load APIs.
-//
 
 //
 // Globals
 //
-extern decltype(LdrLoadDll) *TrueLdrLoadDll;
-extern decltype(LdrGetProcedureAddressEx) *TrueLdrGetProcedureAddressEx;
-extern decltype(LdrGetDllHandleEx) *TrueLdrGetDllHandleEx;
-
-extern decltype(NtOpenFile) *TrueNtOpenFile;
-extern decltype(NtCreateFile) *TrueNtCreateFile;
-extern decltype(NtReadFile) *TrueNtReadFile;
-extern decltype(NtWriteFile) *TrueNtWriteFile;
-extern decltype(NtDeleteFile) *TrueNtDeleteFile;
-extern decltype(NtSetInformationFile) *TrueNtSetInformationFile;
-extern decltype(NtQueryDirectoryFile) *TrueNtQueryDirectoryFile;
-extern decltype(NtQueryInformationFile) *TrueNtQueryInformationFile;
-extern decltype(NtQueryAttributesFile) *TrueNtQueryAttributesFile;
-extern decltype(NtQueryFullAttributesFile) *TrueNtQueryFullAttributesFile;
-
-extern decltype(NtProtectVirtualMemory) *TrueNtProtectVirtualMemory;
-extern decltype(NtQueryVirtualMemory) *TrueNtQueryVirtualMemory;
-extern decltype(NtReadVirtualMemory) *TrueNtReadVirtualMemory;
-extern decltype(NtWriteVirtualMemory) *TrueNtWriteVirtualMemory;
-extern decltype(NtMapViewOfSection) *TrueNtMapViewOfSection;
-extern decltype(NtUnmapViewOfSection) *TrueNtUnmapViewOfSection;
-extern decltype(NtAllocateVirtualMemory) *TrueNtAllocateVirtualMemory;
-extern decltype(NtFreeVirtualMemory) *TrueNtFreeVirtualMemory;
-
-extern decltype(NtOpenKey) *TrueNtOpenKey;
-extern decltype(NtOpenKeyEx) *TrueNtOpenKeyEx;
-extern decltype(NtCreateKey) *TrueNtCreateKey;
-extern decltype(NtQueryValueKey) *TrueNtQueryValueKey;
-extern decltype(NtSetValueKey) *TrueNtSetValueKey;
-extern decltype(NtDeleteKey) *TrueNtDeleteKey;
-extern decltype(NtDeleteValueKey) *TrueNtDeleteValueKey;
-
-extern decltype(NtOpenProcess) *TrueNtOpenProcess;
-extern decltype(NtOpenThread) *TrueNtOpenThread;
-extern decltype(NtTerminateProcess) *TrueNtTerminateProcess;
-extern decltype(NtCreateUserProcess) *TrueNtCreateUserProcess;
-extern decltype(NtCreateThread) *TrueNtCreateThread;
-extern decltype(NtCreateThreadEx) *TrueNtCreateThreadEx;
-extern decltype(NtSuspendThread) *TrueNtSuspendThread;
-extern decltype(NtResumeThread) *TrueNtResumeThread;
 extern decltype(NtContinue) *TrueNtContinue;
-extern decltype(NtGetContextThread) *TrueNtGetContextThread;
-extern decltype(NtSetContextThread) *TrueNtSetContextThread;
 
-extern decltype(NtQueryVolumeInformationFile) *TrueNtQueryVolumeInformationFile;
-extern decltype(NtQuerySystemInformation) *TrueNtQuerySystemInformation;
-extern decltype(RtlDecompressBuffer) *TrueRtlDecompressBuffer;
-extern decltype(NtDelayExecution) *TrueNtDelayExecution;
-extern decltype(NtLoadDriver) *TrueNtLoadDriver;
-extern decltype(NtDeviceIoControlFile) *TrueNtDeviceIoControlFile;
 
 __vsnwprintf_fn_t _vsnwprintf = nullptr;
 __snwprintf_fn_t _snwprintf = nullptr;
+__snprintf_fn_t _snprintf = nullptr;
 strlen_fn_t _strlen = nullptr;
+memcmp_fn_t _memcmp = nullptr;
 pfn_wcsstr _wcsstr = nullptr;
-pfnStringFromGUID2 _StringFromGUID2 = nullptr;
-pfnStringFromCLSID _StringFromCLSID = nullptr;
-pfnCoTaskMemFree _CoTaskMemFree = nullptr;
-pfnCoCreateInstanceEx TrueCoCreateInstanceEx = nullptr;
-
-pfnInternetOpenA TrueInternetOpenA = nullptr;
-pfnInternetConnectA TrueInternetConnectA = nullptr;
-pfnInternetConnectW TrueInternetConnectW = nullptr;
-pfnHttpOpenRequestA TrueHttpOpenRequestA = nullptr;
-pfnHttpOpenRequestW TrueHttpOpenRequestW = nullptr;
-pfnHttpSendRequestA TrueHttpSendRequestA = nullptr;
-pfnHttpSendRequestW TrueHttpSendRequestW = nullptr;
-pfnInternetReadFile TrueInternetReadFile = nullptr;
-
-pfnSetWindowsHookExW TrueSetWindowsHookExW = nullptr;
-pfnCreateServiceW TrueCreateServiceW = nullptr;
+pfn_wcscat _wcscat = nullptr;
+pfn_wcsncat _wcsncat = nullptr;
+pfn_wcslen _wcslen = nullptr;
+pfn_wcscmp _wcscmp = nullptr;
 
 CRITICAL_SECTION gInsideHookLock, gHookDllLock;
 BOOL gInsideHook = FALSE;
 DWORD dwTlsIndex;
-extern CRITICAL_SECTION gDbgHelpLock;
-HookInfo gHookInfo;
+HOOK_CONTEXT gHookContext;
 
+
+
+
+extern "C" {
+
+DWORD __stdcall HookHandler(VOID);
+DWORD_PTR __stdcall AsmCall(PVOID, UCHAR, DWORD_PTR *);
+VOID __stdcall AsmReturn(DWORD_PTR, DWORD_PTR);
+}
 
 //
 // ETW provider GUID and global provider handle.
@@ -109,8 +56,7 @@ REGHANDLE ProviderHandle;
 #define DETACH(x) DetDetach(&(PVOID &)True##x, Hook##x, #x)
 
 
-BOOL
-IsInsideHook()
+extern "C" __declspec(noinline) BOOL WINAPI SfwIsInsideHook()
 /*++
 
 Routine Description:
@@ -147,7 +93,7 @@ Return Value:
 }
 
 VOID
-ReleaseHookGuard()
+SfwReleaseHookGuard()
 {
     TlsSetValue(dwTlsIndex, (LPVOID)FALSE);
 }
@@ -211,14 +157,7 @@ DetAttach(PVOID *ppvReal, PVOID pvMine, PCCH psz)
     LONG l = DetourAttach(ppvReal, pvMine);
     if (l != NO_ERROR)
     {
-        WCHAR Buffer[128];
-        _snwprintf(
-            Buffer,
-            RTL_NUMBER_OF(Buffer),
-            L"Detour Attach failed: %ws: error %d",
-            MultiByteToWide((CHAR *)DetRealName(psz)),
-            l);
-        EtwEventWriteString(ProviderHandle, 0, 0, Buffer);
+        LogMessage(L"Detour Attach failed: %s: error %d", DetRealName(psz), l);
         // Decode((PBYTE)*ppvReal, 3);
     }
 }
@@ -229,14 +168,7 @@ DetDetach(PVOID *ppvReal, PVOID pvMine, PCCH psz)
     LONG l = DetourDetach(ppvReal, pvMine);
     if (l != NO_ERROR)
     {
-        WCHAR Buffer[128];
-        _snwprintf(
-            Buffer,
-            RTL_NUMBER_OF(Buffer),
-            L"Detour Detach failed: %s: error %d",
-            MultiByteToWide((CHAR *)DetRealName(psz)),
-            l);
-        EtwEventWriteString(ProviderHandle, 0, 0, Buffer);
+        LogMessage(L"Detour Detach failed: %s: error %d", DetRealName(psz), l);
     }
 }
 
@@ -289,62 +221,9 @@ ProcessAttach()
         return FALSE;
     }
 
-    AllocateSpaceSymbol();
 
     //
-    // Save real API addresses.
-    //
-
-    TrueLdrLoadDll = LdrLoadDll;
-    TrueLdrGetProcedureAddressEx = LdrGetProcedureAddressEx;
-    TrueLdrGetDllHandleEx = LdrGetDllHandleEx;
-    TrueNtOpenFile = NtOpenFile;
-    TrueNtCreateFile = NtCreateFile;
-    TrueNtWriteFile = NtWriteFile;
-    TrueNtReadFile = NtReadFile;
-    TrueNtDeleteFile = NtDeleteFile;
-    TrueNtSetInformationFile = NtSetInformationFile;
-    TrueNtQueryDirectoryFile = NtQueryDirectoryFile;
-    TrueNtQueryInformationFile = NtQueryInformationFile;
-    TrueNtQueryAttributesFile = NtQueryAttributesFile;
-    TrueNtQueryFullAttributesFile = NtQueryFullAttributesFile;
-    TrueNtDelayExecution = NtDelayExecution;
-    TrueNtProtectVirtualMemory = NtProtectVirtualMemory;
-    TrueNtQueryVirtualMemory = NtQueryVirtualMemory;
-    TrueNtReadVirtualMemory = NtReadVirtualMemory;
-    TrueNtWriteVirtualMemory = NtWriteVirtualMemory;
-    TrueNtFreeVirtualMemory = NtFreeVirtualMemory;
-    TrueNtMapViewOfSection = NtMapViewOfSection;
-    TrueNtUnmapViewOfSection = NtUnmapViewOfSection;
-    TrueNtAllocateVirtualMemory = NtAllocateVirtualMemory;
-    TrueNtProtectVirtualMemory = NtProtectVirtualMemory;
-    TrueNtOpenKey = NtOpenKey;
-    TrueNtOpenKeyEx = NtOpenKeyEx;
-    TrueNtCreateKey = NtCreateKey;
-    TrueNtQueryValueKey = NtQueryValueKey;
-    TrueNtSetValueKey = NtSetValueKey;
-    TrueNtDeleteKey = NtDeleteKey;
-    TrueNtDeleteValueKey = NtDeleteValueKey;
-    TrueNtCreateUserProcess = NtCreateUserProcess;
-    TrueNtOpenThread = NtOpenThread;
-    TrueNtCreateThread = NtCreateThread;
-    TrueNtCreateThreadEx = NtCreateThreadEx;
-    TrueNtResumeThread = NtResumeThread;
-    TrueNtSuspendThread = NtSuspendThread;
-    TrueNtOpenProcess = NtOpenProcess;
-    TrueNtTerminateProcess = NtTerminateProcess;
-    TrueNtContinue = NtContinue;
-    TrueNtGetContextThread = NtGetContextThread;
-    TrueNtSetContextThread = NtSetContextThread;
-
-    TrueRtlDecompressBuffer = RtlDecompressBuffer;
-    TrueNtQuerySystemInformation = NtQuerySystemInformation;
-    TrueNtQueryVolumeInformationFile = NtQueryVolumeInformationFile;
-    TrueNtLoadDriver = NtLoadDriver;
-    TrueNtDeviceIoControlFile = NtDeviceIoControlFile;
-
-    //
-    // Resolve the ones not exposed by ntdll.
+    // Resolve APIs not exposed by ntdll.
     //
 
     _vsnwprintf = (__vsnwprintf_fn_t)GetAPIAddress((PSTR) "_vsnwprintf", (PWSTR)L"ntdll.dll");
@@ -358,30 +237,46 @@ ProcessAttach()
         EtwEventWriteString(ProviderHandle, 0, 0, L"_snwprintf() is NULL");
     }
 
+    _snprintf = (__snprintf_fn_t)GetAPIAddress((PSTR) "_snprintf", (PWSTR)L"ntdll.dll");
+    if (_snprintf == NULL)
+    {
+        EtwEventWriteString(ProviderHandle, 0, 0, L"_snprintf() is NULL");
+    }
+
     _wcsstr = (pfn_wcsstr)GetAPIAddress((PSTR) "wcsstr", (PWSTR)L"ntdll.dll");
     if (_wcsstr == NULL)
     {
         EtwEventWriteString(ProviderHandle, 0, 0, L"wcsstr() is NULL");
     }
 
+    _memcmp = (memcmp_fn_t)GetAPIAddress((PSTR) "memcmp", (PWSTR)L"ntdll.dll");
+    if (_memcmp == NULL)
+    {
+        EtwEventWriteString(ProviderHandle, 0, 0, L"memcmp() is NULL");
+    }
+
+    _wcscat = (pfn_wcscat)GetAPIAddress((PSTR) "wcscat", (PWSTR)L"ntdll.dll");
+    if (_wcscat == NULL)
+    {
+        EtwEventWriteString(ProviderHandle, 0, 0, L"wcscat() is NULL");
+    }
+
     //
     // Initializes a critical section objects.
-    // Uesd for capturing stack trace and IsInsideHook.
+    // Used for capturing stack trace and IsInsideHook.
     //
 
-    InitializeCriticalSection(&gDbgHelpLock);
     InitializeCriticalSection(&gInsideHookLock);
     InitializeCriticalSection(&gHookDllLock);
 
     //
-    // Initialize Hook Information.
+    // Initialize Hook Context.
     //
-    gHookInfo = {0};
+    gHookContext = {0};
 
     //
     // Hook Native APIs.
     //
-
     HookNtAPIs();
 
     return TRUE;
@@ -390,88 +285,18 @@ ProcessAttach()
 BOOL
 ProcessDetach()
 {
-    HookBegingTransation();
 
-    //
-    // Lib Load APIs.
-    //
-
-    // DETACH(LdrLoadDll);
-    // DETACH(LdrGetProcedureAddressEx);
-    // DETACH(LdrGetDllHandleEx);
-
-    //
-    // File APIs.
-    //
-
-    DETACH(NtOpenFile);
-    DETACH(NtCreateFile);
-    // DETACH(NtReadFile);
-    // DETACH(NtWriteFile);
-    // DETACH(NtDeleteFile);
-    // DETACH(NtSetInformationFile);
-    // DETACH(NtQueryDirectoryFile);
-    // DETACH(NtQueryInformationFile);
-    // DETACH(NtQueryAttributesFile);
-    // DETACH(NtQueryFullAttributesFile);
-    // DETACH(MoveFileWithProgressTransactedW);
-
-    //
-    // Registry APIs.
-    //
-
-    // DETACH(NtOpenKey);
-     DETACH(NtOpenKeyEx);
-     DETACH(NtCreateKey);
-     DETACH(NtQueryValueKey);
-     DETACH(NtSetValueKey);
-    // DETACH(NtDeleteKey);
-    // DETACH(NtDeleteValueKey);
-
-    //
-    // Process/Thread APIs.
-    //
-
-    // DETACH(NtOpenProcess);
-    // DETACH(NtOpenThread);
-    // DETACH(NtTerminateProcess);
-    // DETACH(NtCreateUserProcess);
-    // DETACH(NtCreateThread);
-    // DETACH(NtCreateThreadEx);
-    // DETACH(NtSuspendThread);
-    // DETACH(NtResumeThread);
-    // DETACH(NtContinue);
-    // DETACH(NtGetContextThread);
-    // DETACH(NtSetContextThread);
-
-    //
-    // System APIs.
-    //
-
-    DETACH(NtQueryVolumeInformationFile);
-    DETACH(NtQuerySystemInformation);
-    // DETACH(RtlDecompressBuffer);
-    // DETACH(NtDelayExecution);
-    // DETACH(NtLoadDriver);
-
-    //
-    // Memory APIs.
-    //
-
-    // DETACH(NtQueryVirtualMemory);
-    // DETACH(NtReadVirtualMemory);
-    // DETACH(NtWriteVirtualMemory);
-    // DETACH(NtFreeVirtualMemory);
-    // DETACH(NtMapViewOfSection);
-    // DETACH(NtAllocateVirtualMemory);
-    // DETACH(NtUnmapViewOfSection);
-    // DETACH(NtProtectVirtualMemory);
-
-    HookCommitTransaction();
+    SfwHookBeginTransation();
+    //DETACH(NtContinue);
+    SfwHookCommitTransaction();
 
     TlsFree(dwTlsIndex);
-    SymCleanup(NtCurrentProcess());
     EtwEventUnregister(ProviderHandle);
+
+		// Cleanup
+    // hashmap_destroy(&hashmap);
+    // hashmap_destroy(&hashmapA);
+    // hashmap_destroy(&hashmapM);
 
     EtwEventWriteString(ProviderHandle, 0, 0, L"Detached success");
 
@@ -479,7 +304,7 @@ ProcessDetach()
 }
 
 BOOL
-HookBegingTransation()
+SfwHookBeginTransation()
 {
     LONG Status;
 
@@ -509,7 +334,7 @@ HookBegingTransation()
 }
 
 BOOL
-HookCommitTransaction()
+SfwHookCommitTransaction()
 {
     /*
     Commit the current transaction.
@@ -530,313 +355,407 @@ HookCommitTransaction()
 }
 
 VOID
-HookOleAPIs(BOOL Attach)
-{
-    LogMessage(L"Attaching to ole32");
-
-    _StringFromCLSID = (pfnStringFromCLSID)GetAPIAddress((PSTR) "StringFromCLSID", (PWSTR)L"ole32.dll");
-    if (_StringFromCLSID == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"StringFromCLSID() is NULL");
-    }
-
-    _CoTaskMemFree = (pfnCoTaskMemFree)GetAPIAddress((PSTR) "CoTaskMemFree", (PWSTR)L"ole32.dll");
-    if (_CoTaskMemFree == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"CoTaskMemFree() is NULL");
-    }
-
-    TrueCoCreateInstanceEx = (pfnCoCreateInstanceEx)GetAPIAddress((PSTR) "CoCreateInstanceEx", (PWSTR)L"ole32.dll");
-    if (TrueCoCreateInstanceEx == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"CoCreateInstanceEx() is NULL");
-    }
-
-    HookBegingTransation();
-
-    if (Attach)
-    {
-        ATTACH(CoCreateInstanceEx);
-    }
-    else
-    {
-        DETACH(CoCreateInstanceEx);
-    }
-
-    HookCommitTransaction();
-
-    LogMessage(L"Hooked to ole32 done");
-
-    gHookInfo.IsOleHooked = TRUE;
-}
-
-VOID
-HookNetworkAPIs(BOOL Attach)
-{
-    LogMessage(L"Attaching to wininet");
-
-    TrueInternetOpenA = (pfnInternetOpenA)GetAPIAddress((PSTR) "InternetOpenA", (PWSTR)L"wininet.dll");
-    if (TrueInternetOpenA == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"InternetOpenA() is NULL");
-    }
-
-    TrueInternetConnectA = (pfnInternetConnectA)GetAPIAddress((PSTR) "InternetConnectA", (PWSTR)L"wininet.dll");
-    if (TrueInternetOpenA == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"InternetConnectA() is NULL");
-    }
-
-    TrueInternetConnectW = (pfnInternetConnectW)GetAPIAddress((PSTR) "InternetConnectW", (PWSTR)L"wininet.dll");
-    if (TrueInternetOpenA == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"InternetConnectW() is NULL");
-    }
-
-    TrueHttpOpenRequestA = (pfnHttpOpenRequestA)GetAPIAddress((PSTR) "HttpOpenRequestA", (PWSTR)L"wininet.dll");
-    if (TrueHttpOpenRequestA == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"HttpOpenRequestA() is NULL");
-    }
-
-    TrueHttpOpenRequestW = (pfnHttpOpenRequestW)GetAPIAddress((PSTR) "HttpOpenRequestW", (PWSTR)L"wininet.dll");
-    if (TrueHttpOpenRequestW == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"HttpOpenRequestW() is NULL");
-    }
-
-    TrueHttpSendRequestA = (pfnHttpSendRequestA)GetAPIAddress((PSTR) "HttpSendRequestA", (PWSTR)L"wininet.dll");
-    if (TrueHttpOpenRequestA == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"HttpSendRequestA() is NULL");
-    }
-
-    TrueHttpSendRequestW = (pfnHttpSendRequestW)GetAPIAddress((PSTR) "HttpSendRequestW", (PWSTR)L"wininet.dll");
-    if (TrueHttpOpenRequestW == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"HttpSendRequestW() is NULL");
-    }
-
-    TrueInternetReadFile = (pfnInternetReadFile)GetAPIAddress((PSTR) "InternetReadFile", (PWSTR)L"wininet.dll");
-    if (TrueHttpOpenRequestW == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"InternetReadFile() is NULL");
-    }
-
-    HookBegingTransation();
-
-    if (Attach)
-    {
-        ATTACH(InternetOpenA);
-        ATTACH(InternetConnectA);
-        ATTACH(InternetConnectW);
-        ATTACH(HttpOpenRequestA);
-        ATTACH(HttpOpenRequestW);
-        ATTACH(HttpSendRequestA);
-        ATTACH(HttpSendRequestW);
-        //ATTACH(InternetReadFile);
-    }
-    else
-    {
-        DETACH(InternetOpenA);
-        DETACH(InternetConnectA);
-        DETACH(InternetConnectW);
-        DETACH(HttpOpenRequestA);
-        DETACH(HttpOpenRequestW);
-        DETACH(HttpSendRequestA);
-        DETACH(HttpSendRequestW);
-        DETACH(InternetReadFile);
-    }
-
-    HookCommitTransaction();
-
-    LogMessage(L"Attaching to wininet done");
-
-    gHookInfo.IsWinInetHooked = TRUE;
-}
-
-VOID
-HookWinUserAPIs(BOOL Attach)
-{
-    LogMessage(L"Attaching to user32");
-
-    TrueSetWindowsHookExW = (pfnSetWindowsHookExW)GetAPIAddress((PSTR) "SetWindowsHookExW", (PWSTR)L"user32.dll");
-    if (TrueSetWindowsHookExW == NULL)
-    {
-        EtwEventWriteString(ProviderHandle, 0, 0, L"SetWindowsHookExW() is NULL");
-    }
-
-    HookBegingTransation();
-
-    if (Attach)
-    {
-        ATTACH(SetWindowsHookExW);
-    }
-    else
-    {
-        DETACH(SetWindowsHookExW);
-    }
-
-    HookCommitTransaction();
-
-    LogMessage(L"Hooked to user32 done");
-
-    gHookInfo.IsUser32Hooked = TRUE;
-}
-
-VOID
-HookAdvapi32APIs(BOOL Attach)
-{
-	LogMessage(L"Attaching to advapi32");
-
-	TrueCreateServiceW = (pfnCreateServiceW)GetAPIAddress((PSTR) "CreateServiceW", (PWSTR)L"advapi32.dll");
-	if (TrueCreateServiceW == NULL)
-	{
-		EtwEventWriteString(ProviderHandle, 0, 0, L"CreateServiceW() is NULL");
-	}
-
-	HookBegingTransation();
-
-	if (Attach)
-	{
-		ATTACH(CreateServiceW);
-	}
-	else
-	{
-		DETACH(CreateServiceW);
-	}
-
-	HookCommitTransaction();
-
-	LogMessage(L"Hooked to advapi32 done");
-
-	gHookInfo.IsAdvapi32Hooked = TRUE;
-}
-
-VOID
 HookNtAPIs()
 {
     LogMessage(L"HookNtAPIs Begin");
 
-    HookBegingTransation();
+    SfwHookBeginTransation();
 
     //
     // Lib Load APIs.
     //
 
-    ATTACH(LdrLoadDll);
-    ATTACH(LdrGetProcedureAddressEx);
-    // ATTACH(LdrGetDllHandleEx);
+    
+    //ATTACH(NtContinue);
+  
 
-    //
-    // File APIs.
-    //
-
-    ATTACH(NtOpenFile);
-    ATTACH(NtCreateFile);
-    // ATTACH(NtReadFile);
-    // ATTACH(NtWriteFile);
-    ATTACH(NtDeleteFile);
-    // ATTACH(NtSetInformationFile);
-    // ATTACH(NtQueryDirectoryFile);
-    // ATTACH(NtQueryInformationFile);
-    //ATTACH(NtQueryAttributesFile);
-    //ATTACH(NtQueryFullAttributesFile);
-
-
-    //
-    // Registry APIs.
-    //
-
-    ATTACH(NtOpenKey);
-    ATTACH(NtOpenKeyEx);
-    ATTACH(NtCreateKey);
-    ATTACH(NtQueryValueKey);
-    ATTACH(NtSetValueKey);
-    ATTACH(NtDeleteKey);
-    ATTACH(NtDeleteValueKey);
-
-    //
-    // Process/Thread APIs.
-    //
-
-    ATTACH(NtOpenProcess);
-    //ATTACH(NtOpenThread);
-    ATTACH(NtTerminateProcess);
-    ATTACH(NtCreateUserProcess);
-    /*ATTACH(NtCreateThread);
-    ATTACH(NtCreateThreadEx);
-    ATTACH(NtSuspendThread);
-    ATTACH(NtResumeThread);*/
-    ATTACH(NtContinue);
-    //ATTACH(NtGetContextThread);
-    //ATTACH(NtSetContextThread);
-
-    //
-    // System APIs.
-    //
-
-    ATTACH(NtQuerySystemInformation);
-    ATTACH(NtQueryVolumeInformationFile);
-    ATTACH(RtlDecompressBuffer);
-    ATTACH(NtDelayExecution);
-    ATTACH(NtLoadDriver);
-    //ATTACH(NtDeviceIoControlFile);
-
-    //
-    // Memory APIs.
-    //
-
-     ATTACH(NtQueryVirtualMemory);
-     ATTACH(NtReadVirtualMemory);
-     ATTACH(NtWriteVirtualMemory);
-	ATTACH(NtFreeVirtualMemory);
-    // ATTACH(NtMapViewOfSection);
-    // ATTACH(NtAllocateVirtualMemory);
-    ATTACH(NtUnmapViewOfSection);
-    ATTACH(NtProtectVirtualMemory);
-
-    HookCommitTransaction();
+    SfwHookCommitTransaction();
 
     LogMessage(L"HookNtAPIs End");
 }
 
-VOID
-HookDll(PWCHAR DllName)
+
+extern "C" __declspec(noinline) BOOL WINAPI SfwIsCalledFromSystemMemory(DWORD_PTR ReturnAddress)
 {
-    EnterCriticalSection(&gHookDllLock);
-
-    if (_wcsstr(DllName, L"ole32.dll") != NULL)
+    if (ReturnAddress >= gHookContext.ModuleBase && ReturnAddress <= gHookContext.ModuleBase + gHookContext.SizeOfImage)
     {
-        if (!gHookInfo.IsOleHooked)
-        {
-            HookOleAPIs(TRUE);
-        }
-    }
-    else if (_wcsstr(DllName, L"wininet.dll") != NULL)
-    {
-        if (!gHookInfo.IsWinInetHooked)
-        {
-            HookNetworkAPIs(TRUE);
-        }
+        return FALSE;
     }
 
-    else if (_wcsstr(DllName, L"user32.dll") != NULL)
+    //
+    // Get the PEB.
+    //
+#if defined(_WIN64)
+    PPEB pPeb = (PPEB)__readgsqword(0x60);
+
+#elif defined(_WIN32)
+    PPEB pPeb = (PPEB)__readfsdword(0x30);
+#endif
+
+    BOOL bFound = FALSE;
+    PPEB_LDR_DATA pLdrData = NULL;
+    PLIST_ENTRY pEntry, pHeadEntry = NULL;
+    PLDR_DATA_TABLE_ENTRY pLdrEntry = NULL;
+    pLdrData = pPeb->Ldr;
+
+    pHeadEntry = &pLdrData->InMemoryOrderModuleList;
+    pEntry = pHeadEntry->Flink;
+
+    while (pEntry != pHeadEntry)
     {
-        if (!gHookInfo.IsUser32Hooked)
+        // Retrieve the current LDR_DATA_TABLE_ENTRY
+        pLdrEntry = CONTAINING_RECORD(pEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+
+        // Exluce the main module code in the search.
+        if (_wcscmp(pLdrEntry->FullDllName.Buffer, pPeb->ProcessParameters->ImagePathName.Buffer) == 0)
         {
-            HookWinUserAPIs(TRUE);
+            pEntry = pEntry->Flink;
+            continue;
         }
+
+        // Fill the MODULE_ENTRY with the LDR_DATA_TABLE_ENTRY information
+        if (ReturnAddress >= (ULONGLONG)pLdrEntry->DllBase &&
+            ReturnAddress <= (ULONGLONG)pLdrEntry->DllBase + pLdrEntry->SizeOfImage)
+        {
+            bFound = TRUE;
+            break;
+        }
+
+        // Iterate to the next entry.
+        pEntry = pEntry->Flink;
     }
 
-	else if (_wcsstr(DllName, L"advapi32.dll") != NULL)
-	{
-		if (!gHookInfo.IsAdvapi32Hooked)
-		{
-			HookAdvapi32APIs(TRUE);
-		}
-	}
-
-    LeaveCriticalSection(&gHookDllLock);
+    return bFound;
 }
 
+extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCONTEXT pContext)
+{
+    DWORD_PTR Target, Displacement;
+    PAPI pAPI = NULL;
+
+    // CALL NEAR, ABSOLUTE INDIRECT.
+    BYTE byte1 = *(BYTE *)(RetAddr - 6);
+    BYTE byte2 = *(BYTE *)(RetAddr - 5);
+    if (byte1 == 0xff && byte2 == 0x15)
+    {
+        Target = **((DWORD_PTR **)(RetAddr - 4));
+        pAPI = (PAPI)hashmap_get(&gHookContext.hashmapA, (PVOID)Target, 0);
+    }
+
+    // CALL NEAR, RELATIVE
+    else if (byte2 == 0xE8)
+    {
+        Displacement = *((DWORD_PTR *)(RetAddr - 4));
+        Target = RetAddr + Displacement;
+        pAPI = (PAPI)hashmap_get(&gHookContext.hashmapA, (PVOID)Target, 0);
+    }
+    // CALL ESI
+    else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd6)
+    {
+        Target = pContext->Esi;
+        pAPI = (PAPI)hashmap_get(&gHookContext.hashmapA, (PVOID)Target, 0);
+    }
+    // call EDI
+    else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd7)
+    {
+        Target = pContext->Edi;
+        pAPI = (PAPI)hashmap_get(&gHookContext.hashmapA, (PVOID)Target, 0);
+    }
+    else
+    {
+        LogMessage(L"Could not find Caller for ReturnAddress: 0x%x, byte1: 0x%x, byte2: 0x%x\n", RetAddr, byte1, byte2);
+    }
+
+    if (pAPI == NULL)
+    {
+        // JMP to a JMP.
+        Target = **((DWORD_PTR **)(Target + 2));
+        pAPI = (PAPI)hashmap_get(&gHookContext.hashmapA, (PVOID)Target, 0);
+        // pAPI is still NULL, warn !
+        if (!pAPI)
+            LogMessage(L"pAPI is NULL 0x%x\n", RetAddr);
+    }
+
+    return pAPI;
+}
+
+extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI(PWCHAR szLog, PAPI pAPI, DWORD_PTR *BasePointer)
+{
+    INT len = 0;
+    PWCHAR szBuff = (PWCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
+    BOOL bFound = FALSE;
+
+    for (int i = 0; i < pAPI->cParams; i++)
+    {
+        DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + i);
+        switch (pAPI->Parameters[i].Annotation)
+        {
+        case PARAM_IN:
+        case PARAM_IN_OUT:
+            switch (pAPI->Parameters[i].Type)
+            {
+            case PARAM_IMM:
+                _snwprintf(szBuff, MAX_PATH, L"%s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
+                bFound = TRUE;
+                break;
+            case PARAM_PTR_IMM:
+                _snwprintf(szBuff, sizeof(szBuff), L"%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, *(DWORD_PTR *)Param);
+                bFound = TRUE;
+                break;
+            case PARAM_ASCII_STR:
+                _snwprintf(szBuff, MAX_PATH, L"%s:%s, ", (PCHAR)pAPI->Parameters[i].Name, (PCHAR)Param);
+                bFound = TRUE;
+                break;
+            case PARAM_WIDE_STR:
+                _snwprintf(szBuff, MAX_PATH, L"%s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+                bFound = TRUE;
+                break;
+            case PARAM_PTR_STRUCT:
+                _snwprintf(szBuff, MAX_PATH, L"%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, Param);
+                bFound = TRUE;
+                break;
+            default:
+                LogMessage(L"Unknown");
+                break;
+            }
+
+            if (bFound)
+            {
+                _wcsncat(szLog, szBuff, _wcslen(szBuff));
+                RtlZeroMemory(szBuff, _wcslen(szBuff));
+            }
+        }
+    }
+
+    RtlFreeHeap(RtlProcessHeap(), 0, szBuff);
+    return szLog;
+}
+
+// Log Return Value and __Out__ Buffers.
+extern "C" __declspec(noinline) PWCHAR WINAPI
+    PostHookTraceAPI(PAPI pAPI, DWORD_PTR *BasePointer, PWCHAR szLog, DWORD_PTR RetValue)
+{
+    INT len = 0;
+    PWCHAR szBuff = (PWCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
+    BOOL bFound = FALSE;
+
+    for (int i = 0; i < pAPI->cParams; i++)
+    {
+        DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + i);
+        switch (pAPI->Parameters[i].Annotation)
+        {
+        case PARAM_OUT:
+        case PARAM_IN_OUT:
+            switch (pAPI->Parameters[i].Type)
+            {
+            case PARAM_IMM:
+                _snwprintf(szBuff, MAX_PATH, L"out: %s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
+                bFound = TRUE;
+                break;
+            case PARAM_PTR_IMM:
+                if (Param != NULL)
+                    Param = *(DWORD_PTR *)Param;
+                _snwprintf(szBuff, MAX_PATH, L"out: %s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
+                bFound = TRUE;
+                break;
+            case PARAM_ASCII_STR:
+                _snwprintf(szBuff, MAX_PATH, L"out: %s:%s, ", pAPI->Parameters[i].Name, (PCHAR)Param);
+                bFound = TRUE;
+                break;
+            case PARAM_WIDE_STR:
+                _snwprintf(szBuff, MAX_PATH, L"out: %s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+                bFound = TRUE;
+                break;
+            case PARAM_PTR_STRUCT:
+                _snwprintf(szBuff, MAX_PATH, L"out: %s:0x%p, ", (PCHAR)pAPI->Parameters[i].Name, (PVOID)Param);
+                bFound = TRUE;
+                break;
+            default:
+                break;
+            }
+
+            if (bFound)
+            {
+                _wcsncat(szLog, szBuff, _wcslen(szBuff));
+                RtlZeroMemory(szBuff, MAX_PATH);
+            }
+        }
+    }
+
+    // Log Return Value
+    if (pAPI->ReturnVoid)
+    {
+        _wcscat(szLog, L") => void");
+    }
+    else
+    {
+        _snwprintf(szBuff, MAX_PATH, L") => 0x%p", RetValue);
+        _wcsncat(szLog, szBuff, _wcslen(szBuff));
+    }
+
+    // Cleanup.
+    RtlFreeHeap(RtlProcessHeap(), 0, szBuff);
+
+    return szLog;
+}
+
+extern "C" VOID WINAPI
+GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
+{
+    CONTEXT Context = {0};
+    RtlCaptureContext(&Context);
+
+    // Get the target API.
+    PAPI pAPI = GetTargetAPI(ReturnAddress, &Context);
+    if (!pAPI)
+    {
+        LogMessage(L"Could not find API!\n");
+        GetTargetAPI(ReturnAddress, &Context);
+    }
+
+    // Are we called from inside a our own hook handler.
+    if (SfwIsCalledFromSystemMemory(ReturnAddress) || SfwIsInsideHook())
+    {
+        // Call the Real API.
+        // printf("Skipping call to %s\n", pAPI->Name);
+        DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
+        AsmReturn(pAPI->cParams, RetValue);
+        return;
+    }
+
+    // Allocate space to log the API.
+    PWCHAR szLog = (PWCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, 1024);
+
+    // Append the API name.
+    _snwprintf(szLog, MAX_PATH, L"%ws(", pAPI->Name);
+
+    // Pre Hooking.
+    PreHookTraceAPI(szLog, pAPI, &CallerStackFrame);
+
+    // Finally perform the call.
+    DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
+
+    // Log Post Hooking.
+    PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
+
+    LogMessage(L"%ws\n", szLog);
+    RtlFreeHeap(RtlProcessHeap(), 0, szLog);
+
+    // Releasing our hook guard.
+    SfwReleaseHookGuard();
+
+    // Set eax to RetValue, and ecx to cParams so we know how to adjust the stack.
+    AsmReturn(pAPI->cParams, RetValue);
+}
+
+
+BOOL SfwHookLoadedModules()
+{
+    NTSTATUS Status;
+    const unsigned initial_size = 256;
+	if (0 != hashmap_create(initial_size, &gHookContext.hashmapA))
+	{
+        LogMessage(L"hashmap_create failed\n");
+    }
+
+    //
+    // Get the PEB.
+    //
+#if defined(_WIN64)
+    PPEB pPeb = (PPEB)__readgsqword(0x60);
+
+#elif defined(_WIN32)
+    PPEB pPeb = (PPEB)__readfsdword(0x30);
+#endif
+
+    PPEB_LDR_DATA pLdrData = NULL;
+    PLIST_ENTRY pEntry, pHeadEntry = NULL;
+    PLDR_DATA_TABLE_ENTRY pLdrEntry = NULL;
+
+    pLdrData = pPeb->Ldr;
+    pHeadEntry = &pLdrData->InMemoryOrderModuleList;
+    pEntry = pHeadEntry->Flink;
+
+    while (pEntry != pHeadEntry)
+    {
+        pLdrEntry = CONTAINING_RECORD(pEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+
+		//
+        // Skip the main executable module.
+		//
+        if (_wcscmp(pLdrEntry->FullDllName.Buffer, pPeb->ProcessParameters->ImagePathName.Buffer) == 0)
+        {
+            gHookContext.ModuleBase = (DWORD_PTR)pLdrEntry->DllBase;
+            gHookContext.SizeOfImage = pLdrEntry->SizeOfImage;
+            pEntry = pEntry->Flink;
+            continue;
+        }
+
+		//
+        // Check if this loaded module is a module we want to hook.
+		//
+        UNICODE_STRING BaseDllName = {0};
+        RtlCreateUnicodeString(&BaseDllName, pLdrEntry->BaseDllName.Buffer);
+        RtlDowncaseUnicodeString(&BaseDllName, &pLdrEntry->BaseDllName, FALSE);
+
+        ULONG BytesInMultiByteString = 0;
+        PCHAR szCurrentModule =
+            (PCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, pLdrEntry->BaseDllName.Length / 2 + 1);
+        Status = RtlUnicodeToMultiByteN(
+            szCurrentModule, BaseDllName.Length / 2, &BytesInMultiByteString, BaseDllName.Buffer, BaseDllName.Length);
+        if (!NT_SUCCESS(Status))
+            return -1;
+
+        // Get ModuleInfo from hashmap.
+        PMODULE_INFO ModuleInfo =
+            (PMODULE_INFO)hashmap_get(&gHookContext.hashmapM, szCurrentModule, _strlen(szCurrentModule));
+        if (NULL == ModuleInfo)
+        {
+            LogMessage(L"Could not find %s\n", szCurrentModule);
+            RtlFreeHeap(RtlProcessHeap(), 0, szCurrentModule);
+            pEntry = pEntry->Flink;
+            continue;
+        }
+
+		//
+        // Walk over APIs and hook each of them.
+		//
+        for (UINT j = 0; j < ModuleInfo->cAPIs; j++)
+        {
+            PDETOUR_TRAMPOLINE pRealTrampoline;
+            PVOID pRealTarget, pRealDetour;
+
+            SfwHookBeginTransation();
+
+            PVOID Real = GetAPIAddress((PSTR)ModuleInfo->APIList[j], pLdrEntry->BaseDllName.Buffer);
+            LONG l = DetourAttachEx(&Real, HookHandler, &pRealTrampoline, &pRealTarget, &pRealDetour);
+            if (l != NO_ERROR)
+            {
+                LogMessage(L"Detour attach failed");
+            }
+
+            SfwHookCommitTransaction();
+
+            PAPI pAPI =
+                (PAPI)hashmap_get(&gHookContext.hashmap, ModuleInfo->APIList[j], _strlen(ModuleInfo->APIList[j]));
+            pAPI->RealTarget = pRealTrampoline;
+
+            LogMessage(L"%s() Hooked, pRealTarget: 0x%p\n", ModuleInfo->APIList[j], pRealTarget);
+
+            if (0 != hashmap_put(&gHookContext.hashmapA, pRealTarget, 0, pAPI))
+            {
+                LogMessage(L"hashmap_put failed\n");
+            }
+        }
+
+		//
+        // Iterate to the next entry.
+		//
+        pEntry = pEntry->Flink;
+
+        // Cleanup.
+        RtlFreeHeap(RtlProcessHeap(), 0, szCurrentModule);
+    }
+
+	return TRUE;
+}

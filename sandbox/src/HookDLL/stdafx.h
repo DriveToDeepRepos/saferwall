@@ -46,19 +46,17 @@
 #include <evntprov.h>
 
 //
-// For Stack walking
-//
-
-#include <dbghelp.h>
-
-//
 // Hook handlers and logging prototypes.
 //
 
 #include "hooking.h"
 #include "logging.h"
 #include "helpers.h"
-#include "stackwalk.h"
+#include "schema.h"
+#include "logging.h"
+#include "jsmn.h"
+#include "hashmap.h"
+
 
 //
 // For GetMappedFileNameW and _ReturnAddress.

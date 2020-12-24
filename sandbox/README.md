@@ -28,8 +28,10 @@ The current implementation is targetting Windows OS for the momen, specifically 
 
 ## Features
 
-- Invisible inline user hooks.
-- Kernel mode malware support.
+- Support Windows 7+ x86/x64.
+- Invisible user mode hooks.
+- Invisible kernel mode hooks.
+- Generic Hook Handler to trace all Win32 APIs.
 - Track child processes and follows code injection.
 - Extract all files writen to disk.
 - Memory dumps/unpacking.
@@ -41,16 +43,16 @@ The current implementation is targetting Windows OS for the momen, specifically 
 
 - Driver running in the guest (registry keys, ..)
 - Processes running inside the guest (User simulator)
-- DLL injected.
+- Injected DLL.
 
 
 ## Hooked APIs
 
 ### Libload
 
-- LdrLoadDll
+- LdrLoadDll (Place the hooks)
 - LdrGetProcedureAddressEx
-- LdrGetDllHandleEx
+- LdrGetDllHandleEx (Hide DLL if needed)
 
 ### Files
 
@@ -58,7 +60,7 @@ The current implementation is targetting Windows OS for the momen, specifically 
 - NtCreateFile
 - NtReadFile
 - NtWriteFile
-- NtDeleteFile
+- NtDeleteFile (Save copy)
 - NtSetInformationFile
 - NtQueryDirectoryFile
 - NtQueryInformationFile
@@ -120,7 +122,7 @@ The current implementation is targetting Windows OS for the momen, specifically 
 
 ### Crypto
 
-- RtlDecompressBuffer
+- RtlDecompressBuffer (dump content)
 
 ### Synchronization
 

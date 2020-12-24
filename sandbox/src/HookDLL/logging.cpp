@@ -1,6 +1,4 @@
 #include "stdafx.h"
-#include <Windows.h>
-
 
 //
 // Globals
@@ -8,6 +6,7 @@
 
 extern __vsnwprintf_fn_t _vsnwprintf;
 extern REGHANDLE ProviderHandle;
+extern pfn_wcscat _wcscat;
 
 
 
@@ -20,7 +19,7 @@ VOID TraceAPI(PCWSTR Format, ...) {
 	_vsnwprintf(Buffer, RTL_NUMBER_OF(Buffer), Format, arglist);
     va_end(arglist);
 
-	wcscat(Buffer, L"\n");
+	_wcscat(Buffer, L"\n");
 	EtwEventWriteString(ProviderHandle, 0, 0, Buffer);
 }
 

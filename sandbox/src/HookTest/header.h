@@ -63,7 +63,9 @@ TestLibLoadHooks();
 BOOL
 TestMemoryHooks();
 BOOL
-TestNetworkHooks();
+TestWinInetHooks();
+BOOL
+TestWinhttpHooks();
 VOID
 TestOleHooks();
 VOID
@@ -74,5 +76,3 @@ VOID
 TestWinCryptHooks();
 VOID
 TestProcessThreadHooks();
-BOOL
-TestWinhttpHooks();

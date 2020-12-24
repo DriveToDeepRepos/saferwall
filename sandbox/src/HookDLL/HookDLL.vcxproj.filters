@@ -13,15 +13,6 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\Hooks">
-      <UniqueIdentifier>{7370c04c-32cf-4720-ae38-0f5ee212bc5f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Hooks\Source">
-      <UniqueIdentifier>{4f6962c1-ca3d-4d19-8f78-cc4f4d48a579}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Hooks\Headers">
-      <UniqueIdentifier>{7af8dbce-50c5-4803-aa0d-79e8b84b5bed}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -30,20 +21,8 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="memoryapi.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="synchapi.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="systemapi.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="hooking.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="fileapi.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
     </ClInclude>
     <ClInclude Include="ntdll.h">
       <Filter>Header Files</Filter>
@@ -51,35 +30,17 @@
     <ClInclude Include="logging.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libloaderapi.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="winregapi.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="processthreadsapi.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="ntifs.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
-    </ClInclude>
     <ClInclude Include="helpers.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ole.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="net.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
-    </ClInclude>
-    <ClInclude Include="stackwalk.h">
+    <ClInclude Include="hashmap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="winuserapi.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
+    <ClInclude Include="jsmn.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="winsvc.h">
-      <Filter>Source Files\Hooks\Headers</Filter>
+    <ClInclude Include="schema.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -89,53 +50,25 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="fileapi.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
-    </ClCompile>
-    <ClCompile Include="memoryapi.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
-    </ClCompile>
-    <ClCompile Include="synchapi.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
-    </ClCompile>
-    <ClCompile Include="systemapi.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
-    </ClCompile>
     <ClCompile Include="hooking.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="libloaderapi.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
     </ClCompile>
     <ClCompile Include="logging.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="winregapi.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
-    </ClCompile>
-    <ClCompile Include="processthreadsapi.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
-    </ClCompile>
-    <ClCompile Include="ntifs.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
-    </ClCompile>
     <ClCompile Include="helpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ole.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
-    </ClCompile>
-    <ClCompile Include="net.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
-    </ClCompile>
-    <ClCompile Include="stackwalk.cpp">
+    <ClCompile Include="schema.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="winuserapi.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
+    <ClCompile Include="jsmn.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="winsvc.cpp">
-      <Filter>Source Files\Hooks\Source</Filter>
-    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="x86.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
   </ItemGroup>
 </Project>
