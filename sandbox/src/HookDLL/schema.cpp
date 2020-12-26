@@ -1,21 +1,36 @@
 #include "stdafx.h"
 
-extern HOOK_CONTEXT gHookContext;
+extern PHOOK_CONTEXT pgHookContext;
 extern strlen_fn_t _strlen;
+extern pfn_wcslen _wcslen;
 
 BOOL
 SfwSchemaLoadAPIDef()
 {
     int r;
     jsmn_parser p;
-    jsmntok_t t[10000];
+    jsmntok_t *t;
+    DWORD dwJsonLength = 0;
 
-    // Read a json file
+    //
+    // Allocate space for json tokens.
+    //
+
+    t = (jsmntok_t *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(jsmntok_t) * 10000);
+
+    //
+    // Read the file.
+    //
+
     WCHAR filename[] = L"C:\\coding\\saferwall-sandbox\\sandbox\\src\\sdk2json\\mini-apis.json";
-    char *JSON_STRING = (CHAR*)SfwUtilReadFile(filename);
+    char *JSON_STRING = (CHAR *)SfwUtilReadFile(filename, &dwJsonLength);
+
+    //
+    // Parse the json API definiion file.
+    //
 
     jsmn_init(&p);
-    r = jsmn_parse(&p, JSON_STRING, _strlen(JSON_STRING), t, sizeof(t) / sizeof(t[0]));
+    r = jsmn_parse(&p, JSON_STRING, dwJsonLength, t, 100000);
     if (r < 0)
     {
         LogMessage(L"jsmn_parse() failed to parse JSON: %d", r);
@@ -30,12 +45,17 @@ SfwSchemaLoadAPIDef()
     }
 
     const unsigned initial_size = 256;
-    if (0 != hashmap_create(initial_size, &gHookContext.hashmap))
+
+    pgHookContext->hashmap =
+        (struct hashmap_s *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(struct hashmap_s *));
+    if (0 != hashmap_create(initial_size, pgHookContext->hashmap))
     {
         LogMessage(L"hashmap_create() failed\n");
     }
 
-    if (0 != hashmap_create(initial_size, &gHookContext.hashmapM))
+    pgHookContext->hashmapM =
+        (struct hashmap_s *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(struct hashmap_s *));
+    if (0 != hashmap_create(initial_size, pgHookContext->hashmapM))
     {
         LogMessage(L"hashmap_create failed\n");
     }
@@ -50,14 +70,20 @@ SfwSchemaLoadAPIDef()
     for (UINT iModule = 0; iModule < cModules; iModule++)
     {
         // Get the module name.
-        LPCSTR szModuleName = (LPCSTR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, t[d].end - t[d].start + 1);
-        RtlCopyMemory((PVOID)szModuleName, JSON_STRING + t[d].start, t[d].end - t[d].start);
+        LPCWSTR szModuleName =
+            (LPCWSTR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, (t[d].end - t[d].start + 1) * sizeof(WCHAR));
+        RtlMultiByteToUnicodeN(
+            (PWCH)szModuleName,
+            (t[d].end - t[d].start + 1) * sizeof(WCHAR),
+            NULL,
+            JSON_STRING + t[d].start,
+            t[d].end - t[d].start);
 
         UINT cAPIs = t[++d].size;
 
         // Allocate space for an array of strings.
-        LPCSTR *APIList;
-        APIList = (LPCSTR *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(LPCSTR) * cAPIs);
+        LPCWSTR *APIList;
+        APIList = (LPCWSTR *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(LPCWSTR) * cAPIs);
 
         // Create a new ModuleInfo.
         PMODULE_INFO pModuleInfo =
@@ -75,8 +101,14 @@ SfwSchemaLoadAPIDef()
             PAPI pAPI = (PAPI)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(API));
 
             // Get API name.
-            pAPI->Name = (LPCSTR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, t[d].end - t[d].start + 1);
-            RtlCopyMemory((PVOID)pAPI->Name, JSON_STRING + t[d].start, t[d].end - t[d].start);
+            pAPI->Name = (LPCWSTR)RtlAllocateHeap(
+                RtlProcessHeap(), HEAP_ZERO_MEMORY, (t[d].end - t[d].start + 1) * sizeof(WCHAR));
+            RtlMultiByteToUnicodeN(
+                (PWCH)pAPI->Name,
+                (t[d].end - t[d].start + 1) * sizeof(WCHAR),
+                NULL,
+                JSON_STRING + t[d].start,
+                t[d].end - t[d].start);
 
             APIList[iAPI] = pAPI->Name;
 
@@ -84,7 +116,7 @@ SfwSchemaLoadAPIDef()
             d += 2;
 
             // Get the return type.
-            if (RtlCompareMemory(JSON_STRING + t[++d].start, "true", 4))
+            if (RtlCompareMemory(JSON_STRING + t[++d].start, "true", 4) == 4)
             {
                 pAPI->ReturnVoid = true;
             }
@@ -109,23 +141,25 @@ SfwSchemaLoadAPIDef()
 
                 for (UINT iParamMember = 0; iParamMember < cParamMembers; iParamMember++)
                 {
-                    if (RtlCompareMemory(JSON_STRING + t[d].start, "anno", 4))
+                    if (RtlCompareMemory(JSON_STRING + t[d].start, "anno", 4) == 4)
                     {
                         pAPI->Parameters[iParams].Annotation =
                             (PARAM_ANNOTATION)(*(PCHAR)(JSON_STRING + t[d + 1].start) - '0');
                     }
 
-                    else if (RtlCompareMemory(JSON_STRING + t[d].start, "type", 4))
+                    else if (RtlCompareMemory(JSON_STRING + t[d].start, "type", 4) == 4)
                     {
                         pAPI->Parameters[iParams].Type = (TYPE_PARAM)(*(PCHAR)(JSON_STRING + t[d + 1].start) - '0');
                     }
 
-                    else if (RtlCompareMemory(JSON_STRING + t[d].start, "name", 4))
+                    else if (RtlCompareMemory(JSON_STRING + t[d].start, "name", 4) == 4)
                     {
-                        pAPI->Parameters[iParams].Name = (LPCSTR)RtlAllocateHeap(
-                            RtlProcessHeap(), HEAP_ZERO_MEMORY, t[d + 1].end - t[d + 1].start + 1);
-                        RtlCopyMemory(
-                            (PVOID)pAPI->Parameters[iParams].Name,
+                        pAPI->Parameters[iParams].Name = (LPCWSTR)RtlAllocateHeap(
+                            RtlProcessHeap(), HEAP_ZERO_MEMORY, (t[d + 1].end - t[d + 1].start + 1) * sizeof(WCHAR));
+                        RtlMultiByteToUnicodeN(
+                            (PWCH)pAPI->Parameters[iParams].Name,
+                            (t[d + 1].end - t[d + 1].start + 1) * sizeof(WCHAR),
+                            NULL,
                             JSON_STRING + t[d + 1].start,
                             t[d + 1].end - t[d + 1].start);
                     }
@@ -134,18 +168,18 @@ SfwSchemaLoadAPIDef()
                 }
             }
 
-            if (0 != hashmap_put(&gHookContext.hashmap, pAPI->Name, _strlen(pAPI->Name), pAPI))
+            if (0 != hashmap_put(pgHookContext->hashmap, pAPI->Name, _wcslen(pAPI->Name) * sizeof(WCHAR), pAPI))
             {
                 LogMessage(L"hashmap_put failed\n");
             }
         }
 
-        if (0 != hashmap_put(&gHookContext.hashmapM, szModuleName, _strlen(szModuleName), pModuleInfo))
+        if (0 != hashmap_put(pgHookContext->hashmapM, szModuleName, _wcslen(szModuleName) * sizeof(WCHAR), pModuleInfo))
         {
             LogMessage(L"hashmap_put failed\n");
         }
     }
 
-    RtlFreeHeap(RtlProcessHeap(), 0, JSON_STRING);
+    NtFreeVirtualMemory(NtCurrentProcess(), (PVOID *)&JSON_STRING, (PSIZE_T)&dwJsonLength, MEM_RELEASE);
     return TRUE;
 }

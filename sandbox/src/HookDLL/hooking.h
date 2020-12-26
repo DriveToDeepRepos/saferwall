@@ -19,6 +19,8 @@ BOOL
 SfwHookCommitTransaction();
 VOID
 HookNtAPIs();
+BOOL
+SfwHookLoadedModules();
 
 //
 // Unfortunatelly sprintf-like functions are not exposed
@@ -30,13 +32,12 @@ using __vsnwprintf_fn_t = int(__cdecl *)(wchar_t *buffer, size_t count, const wc
 using __snwprintf_fn_t = int(__cdecl *)(wchar_t *buffer, size_t count, const wchar_t *format, ...);
 using __snprintf_fn_t = int(__cdecl *)(char *buffer, size_t count, const char *format, ...);
 using strlen_fn_t = size_t(__cdecl *)(char const *buffer);
-using memcmp_fn_t = int * (__cdecl *)(const void *buffer1, const void *buffer2, size_t count);
+using memcmp_fn_t = int *(__cdecl *)(const void *buffer1, const void *buffer2, size_t count);
 using pfn_wcsstr = wchar_t *(__cdecl *)(wchar_t *_String, wchar_t const *_SubStr);
 using pfn_wcscat = wchar_t *(__cdecl *)(wchar_t *dest, wchar_t const *src);
 using pfn_wcsncat = wchar_t *(__cdecl *)(wchar_t *dest, wchar_t const *src, size_t count);
-using pfn_wcslen = size_t (__cdecl *)( const wchar_t *str);
-using pfn_wcscmp = int(__cdecl *)(const wchar_t  *string1, const wchar_t  *string2);
-
+using pfn_wcslen = size_t(__cdecl *)(const wchar_t *str);
+using pfn_wcscmp = int(__cdecl *)(const wchar_t *string1, const wchar_t *string2);
 
 //
 // Structs
@@ -46,9 +47,7 @@ typedef struct _HOOK_CONTEXT
 {
     DWORD_PTR ModuleBase;
     DWORD SizeOfImage;
-	struct hashmap_s hashmap;	// Name => pAPI
-    struct hashmap_s hashmapA;	// Target API => pAPI
-    struct hashmap_s hashmapM;	// ModuleName => pModuleInfo
-
-
+    struct hashmap_s *hashmap;  // Name => pAPI
+    struct hashmap_s *hashmapA; // Target API => pAPI
+    struct hashmap_s *hashmapM; // ModuleName => pModuleInfo
 } HOOK_CONTEXT, *PHOOK_CONTEXT;

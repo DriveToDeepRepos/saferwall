@@ -47,14 +47,14 @@ typedef enum _TYPE_RETURN_VALUE
 typedef struct _API_PARAM
 {
     TYPE_PARAM Type;
-    LPCSTR Name;
+    LPCWSTR Name;
     PARAM_ANNOTATION Annotation;
 } API_PARAM, *PAPI_PARAM;
 
 typedef struct _API
 {
     BOOL ReturnVoid;
-    LPCSTR Name;
+    LPCWSTR Name;
     UCHAR cParams;
     PAPI_PARAM Parameters;
     PVOID TargetFunction;
@@ -64,6 +64,13 @@ typedef struct _API
 
 typedef struct _MODULE_INFO
 {
-    LPCSTR *APIList;
+    LPCWSTR *APIList;
     UINT cAPIs;
 } MODULE_INFO, *PMODULE_INFO;
+
+
+//
+// Prototypes.
+//
+BOOL
+SfwSchemaLoadAPIDef();

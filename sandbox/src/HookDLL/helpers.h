@@ -7,4 +7,4 @@ MultiByteToWide(CHAR *lpMultiByteStr);
 DWORD
 GetNtPathFromHandle(HANDLE Handle, PUNICODE_STRING *ObjectName);
 PVOID
-SfwUtilReadFile(CONST WCHAR *wszFileName);
+SfwUtilReadFile(CONST WCHAR *wszFileName, DWORD *lpNumberOfBytesRead);

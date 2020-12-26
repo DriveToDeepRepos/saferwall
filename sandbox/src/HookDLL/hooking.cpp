@@ -28,12 +28,10 @@ pfn_wcsncat _wcsncat = nullptr;
 pfn_wcslen _wcslen = nullptr;
 pfn_wcscmp _wcscmp = nullptr;
 
-CRITICAL_SECTION gInsideHookLock, gHookDllLock;
-BOOL gInsideHook = FALSE;
 DWORD dwTlsIndex;
-HOOK_CONTEXT gHookContext;
-
-
+BOOL gInsideHook = FALSE;
+PHOOK_CONTEXT pgHookContext = nullptr;
+CRITICAL_SECTION gInsideHookLock, gHookDllLock;
 
 
 extern "C" {
@@ -173,7 +171,7 @@ DetDetach(PVOID *ppvReal, PVOID pvMine, PCCH psz)
 }
 
 PVOID
-GetAPIAddress(PSTR FunctionName, PWSTR ModuleName)
+GetAPIAddress(LPCSTR FunctionName, PWSTR ModuleName)
 {
     NTSTATUS Status;
 
@@ -196,6 +194,27 @@ GetAPIAddress(PSTR FunctionName, PWSTR ModuleName)
     if (Status != STATUS_SUCCESS)
     {
         EtwEventWriteString(ProviderHandle, 0, 0, L"LdrGetProcedureAddress failed");
+        return NULL;
+    }
+
+    return Address;
+}
+
+PVOID
+SfwUtilGetProcAddr(HANDLE ModuleHandle, LPCWSTR ProcedureName)
+{
+    PVOID Address;
+    NTSTATUS Status;
+    
+	UNICODE_STRING wideProcedureName;
+    RtlInitUnicodeString(&wideProcedureName, ProcedureName);
+    
+	ANSI_STRING RoutineName = {0};
+    RtlUnicodeStringToAnsiString(&RoutineName, &wideProcedureName, TRUE);
+
+    Status = LdrGetProcedureAddress(ModuleHandle, &RoutineName, 0, &Address);
+    if (Status != STATUS_SUCCESS)
+    {
         return NULL;
     }
 
@@ -255,11 +274,48 @@ ProcessAttach()
         EtwEventWriteString(ProviderHandle, 0, 0, L"memcmp() is NULL");
     }
 
+	_wcscmp = (pfn_wcscmp)GetAPIAddress((PSTR) "wcscmp", (PWSTR)L"ntdll.dll");
+    if (_wcscmp == NULL)
+    {
+        EtwEventWriteString(ProviderHandle, 0, 0, L"wcscmp() is NULL");
+    }
+
     _wcscat = (pfn_wcscat)GetAPIAddress((PSTR) "wcscat", (PWSTR)L"ntdll.dll");
     if (_wcscat == NULL)
     {
         EtwEventWriteString(ProviderHandle, 0, 0, L"wcscat() is NULL");
     }
+
+	_wcsncat = (pfn_wcsncat)GetAPIAddress((PSTR) "wcsncat", (PWSTR)L"ntdll.dll");
+    if (_wcsncat == NULL)
+    {
+        EtwEventWriteString(ProviderHandle, 0, 0, L"wcsncat() is NULL");
+    }
+
+    _strlen = (strlen_fn_t)GetAPIAddress((PSTR) "strlen", (PWSTR)L"ntdll.dll");
+    if (_strlen == NULL)
+    {
+        EtwEventWriteString(ProviderHandle, 0, 0, L"strlen() is NULL");
+    }
+
+	_wcslen = (pfn_wcslen)GetAPIAddress((PSTR) "wcslen", (PWSTR)L"ntdll.dll");
+    if (_wcslen == NULL)
+    {
+        EtwEventWriteString(ProviderHandle, 0, 0, L"wcslen() is NULL");
+    }
+
+	//
+    // Initialize Hook Context.
+    //
+
+    pgHookContext = 
+        (PHOOK_CONTEXT)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(HOOK_CONTEXT));
+
+	//
+	// Load API Definitions schemas.
+	//
+
+    SfwSchemaLoadAPIDef();
 
     //
     // Initializes a critical section objects.
@@ -270,14 +326,10 @@ ProcessAttach()
     InitializeCriticalSection(&gHookDllLock);
 
     //
-    // Initialize Hook Context.
+    // Hook Loaded Modules's APIs.
     //
-    gHookContext = {0};
 
-    //
-    // Hook Native APIs.
-    //
-    HookNtAPIs();
+    SfwHookLoadedModules();
 
     return TRUE;
 }
@@ -350,7 +402,6 @@ SfwHookCommitTransaction()
         return FALSE;
     }
 
-    EtwEventWriteString(ProviderHandle, 0, 0, L"Detours Attached");
     return TRUE;
 }
 
@@ -377,7 +428,7 @@ HookNtAPIs()
 
 extern "C" __declspec(noinline) BOOL WINAPI SfwIsCalledFromSystemMemory(DWORD_PTR ReturnAddress)
 {
-    if (ReturnAddress >= gHookContext.ModuleBase && ReturnAddress <= gHookContext.ModuleBase + gHookContext.SizeOfImage)
+    if (ReturnAddress >= pgHookContext->ModuleBase && ReturnAddress <= pgHookContext->ModuleBase + pgHookContext->SizeOfImage)
     {
         return FALSE;
     }
@@ -439,7 +490,7 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCON
     if (byte1 == 0xff && byte2 == 0x15)
     {
         Target = **((DWORD_PTR **)(RetAddr - 4));
-        pAPI = (PAPI)hashmap_get(&gHookContext.hashmapA, (PVOID)Target, 0);
+        pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
     }
 
     // CALL NEAR, RELATIVE
@@ -447,19 +498,19 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCON
     {
         Displacement = *((DWORD_PTR *)(RetAddr - 4));
         Target = RetAddr + Displacement;
-        pAPI = (PAPI)hashmap_get(&gHookContext.hashmapA, (PVOID)Target, 0);
+        pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
     }
     // CALL ESI
     else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd6)
     {
         Target = pContext->Esi;
-        pAPI = (PAPI)hashmap_get(&gHookContext.hashmapA, (PVOID)Target, 0);
+        pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
     }
     // call EDI
     else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd7)
     {
         Target = pContext->Edi;
-        pAPI = (PAPI)hashmap_get(&gHookContext.hashmapA, (PVOID)Target, 0);
+        pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
     }
     else
     {
@@ -470,7 +521,7 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCON
     {
         // JMP to a JMP.
         Target = **((DWORD_PTR **)(Target + 2));
-        pAPI = (PAPI)hashmap_get(&gHookContext.hashmapA, (PVOID)Target, 0);
+        pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
         // pAPI is still NULL, warn !
         if (!pAPI)
             LogMessage(L"pAPI is NULL 0x%x\n", RetAddr);
@@ -483,7 +534,7 @@ extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI(PWCHAR szLog, PAPI
 {
     INT len = 0;
     PWCHAR szBuff = (PWCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
-    BOOL bFound = FALSE;
+    BOOL bFound = TRUE;
 
     for (int i = 0; i < pAPI->cParams; i++)
     {
@@ -496,26 +547,22 @@ extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI(PWCHAR szLog, PAPI
             {
             case PARAM_IMM:
                 _snwprintf(szBuff, MAX_PATH, L"%s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
-                bFound = TRUE;
                 break;
             case PARAM_PTR_IMM:
                 _snwprintf(szBuff, sizeof(szBuff), L"%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, *(DWORD_PTR *)Param);
-                bFound = TRUE;
                 break;
             case PARAM_ASCII_STR:
                 _snwprintf(szBuff, MAX_PATH, L"%s:%s, ", (PCHAR)pAPI->Parameters[i].Name, (PCHAR)Param);
-                bFound = TRUE;
                 break;
             case PARAM_WIDE_STR:
                 _snwprintf(szBuff, MAX_PATH, L"%s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
-                bFound = TRUE;
                 break;
             case PARAM_PTR_STRUCT:
                 _snwprintf(szBuff, MAX_PATH, L"%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, Param);
-                bFound = TRUE;
                 break;
             default:
                 LogMessage(L"Unknown");
+                bFound = FALSE;
                 break;
             }
 
@@ -653,7 +700,9 @@ BOOL SfwHookLoadedModules()
 {
     NTSTATUS Status;
     const unsigned initial_size = 256;
-	if (0 != hashmap_create(initial_size, &gHookContext.hashmapA))
+    pgHookContext->hashmapA =
+        (struct hashmap_s *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(struct hashmap_s *));
+	if (0 != hashmap_create(initial_size, pgHookContext->hashmapA))
 	{
         LogMessage(L"hashmap_create failed\n");
     }
@@ -685,34 +734,24 @@ BOOL SfwHookLoadedModules()
 		//
         if (_wcscmp(pLdrEntry->FullDllName.Buffer, pPeb->ProcessParameters->ImagePathName.Buffer) == 0)
         {
-            gHookContext.ModuleBase = (DWORD_PTR)pLdrEntry->DllBase;
-            gHookContext.SizeOfImage = pLdrEntry->SizeOfImage;
+            pgHookContext->ModuleBase = (DWORD_PTR)pLdrEntry->DllBase;
+            pgHookContext->SizeOfImage = pLdrEntry->SizeOfImage;
             pEntry = pEntry->Flink;
             continue;
         }
 
 		//
-        // Check if this loaded module is a module we want to hook.
-		//
-        UNICODE_STRING BaseDllName = {0};
-        RtlCreateUnicodeString(&BaseDllName, pLdrEntry->BaseDllName.Buffer);
-        RtlDowncaseUnicodeString(&BaseDllName, &pLdrEntry->BaseDllName, FALSE);
-
-        ULONG BytesInMultiByteString = 0;
-        PCHAR szCurrentModule =
-            (PCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, pLdrEntry->BaseDllName.Length / 2 + 1);
-        Status = RtlUnicodeToMultiByteN(
-            szCurrentModule, BaseDllName.Length / 2, &BytesInMultiByteString, BaseDllName.Buffer, BaseDllName.Length);
-        if (!NT_SUCCESS(Status))
-            return -1;
-
         // Get ModuleInfo from hashmap.
+		//
+
+		UNICODE_STRING szModuleName = {0};
+        RtlCreateUnicodeString(&szModuleName, pLdrEntry->BaseDllName.Buffer);
+        RtlDowncaseUnicodeString(&szModuleName, &pLdrEntry->BaseDllName, FALSE);
         PMODULE_INFO ModuleInfo =
-            (PMODULE_INFO)hashmap_get(&gHookContext.hashmapM, szCurrentModule, _strlen(szCurrentModule));
+            (PMODULE_INFO)hashmap_get(pgHookContext->hashmapM, szModuleName.Buffer, szModuleName.Length);
         if (NULL == ModuleInfo)
         {
-            LogMessage(L"Could not find %s\n", szCurrentModule);
-            RtlFreeHeap(RtlProcessHeap(), 0, szCurrentModule);
+            LogMessage(L"Could not find %s\n", pLdrEntry->BaseDllName.Buffer);
             pEntry = pEntry->Flink;
             continue;
         }
@@ -725,26 +764,40 @@ BOOL SfwHookLoadedModules()
             PDETOUR_TRAMPOLINE pRealTrampoline;
             PVOID pRealTarget, pRealDetour;
 
-            SfwHookBeginTransation();
+            PVOID Real = SfwUtilGetProcAddr(pLdrEntry->DllBase, ModuleInfo->APIList[j]);
+            if (!Real)
+            {
+                LogMessage(L"SfwUtilGetProcAddr failed to find %s", ModuleInfo->APIList[j]);
+                continue;
+			}
 
-            PVOID Real = GetAPIAddress((PSTR)ModuleInfo->APIList[j], pLdrEntry->BaseDllName.Buffer);
+			SfwHookBeginTransation();
+
             LONG l = DetourAttachEx(&Real, HookHandler, &pRealTrampoline, &pRealTarget, &pRealDetour);
             if (l != NO_ERROR)
             {
                 LogMessage(L"Detour attach failed");
+                return FALSE;
             }
 
             SfwHookCommitTransaction();
 
             PAPI pAPI =
-                (PAPI)hashmap_get(&gHookContext.hashmap, ModuleInfo->APIList[j], _strlen(ModuleInfo->APIList[j]));
+                (PAPI)hashmap_get(pgHookContext->hashmap, ModuleInfo->APIList[j], _wcslen(ModuleInfo->APIList[j])*sizeof(WCHAR));
+            if (!pAPI)
+            {
+                LogMessage(L"hashmap_get() failed");
+                return FALSE;
+			}
+
             pAPI->RealTarget = pRealTrampoline;
 
-            LogMessage(L"%s() Hooked, pRealTarget: 0x%p\n", ModuleInfo->APIList[j], pRealTarget);
+            LogMessage(L"%s() Hooked, pRealTarget: 0x%p", ModuleInfo->APIList[j], pRealTarget);
 
-            if (0 != hashmap_put(&gHookContext.hashmapA, pRealTarget, 0, pAPI))
+            if (0 != hashmap_put(pgHookContext->hashmapA, pRealTarget, 0, pAPI))
             {
                 LogMessage(L"hashmap_put failed\n");
+                return FALSE;
             }
         }
 
@@ -753,8 +806,6 @@ BOOL SfwHookLoadedModules()
 		//
         pEntry = pEntry->Flink;
 
-        // Cleanup.
-        RtlFreeHeap(RtlProcessHeap(), 0, szCurrentModule);
     }
 
 	return TRUE;
