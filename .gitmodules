@@ -7,3 +7,6 @@
 [submodule "sandbox/include/phnt"]
 	path = sandbox/include/phnt
 	url = https://github.com/processhacker/phnt.git
+[submodule "sandbox/src/SDK2Json/sdk-api"]
+	path = sandbox/src/SDK2Json/sdk-api
+	url = https://github.com/MicrosoftDocs/sdk-api.git

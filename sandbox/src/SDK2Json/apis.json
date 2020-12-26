@@ -1,6 +1,9 @@
 {
  "advapi32.dll": {
   "ControlService": {
+   "callconv": "WINAPI",
+   "name": "ControlService",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -17,10 +20,12 @@
      "type": "LPSERVICE_STATUS",
      "name": "lpServiceStatus"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "ControlServiceExA": {
+   "callconv": "WINAPI",
+   "name": "ControlServiceExA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -42,10 +47,12 @@
      "type": "PVOID",
      "name": "pControlParams"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "ControlServiceExW": {
+   "callconv": "WINAPI",
+   "name": "ControlServiceExW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -67,10 +74,12 @@
      "type": "PVOID",
      "name": "pControlParams"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CreateProcessAsUserA": {
+   "callconv": "WINAPI",
+   "name": "CreateProcessAsUserA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_opt_",
@@ -127,10 +136,12 @@
      "type": "LPPROCESS_INFORMATION",
      "name": "lpProcessInformation"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CreateProcessAsUserW": {
+   "callconv": "WINAPI",
+   "name": "CreateProcessAsUserW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_opt_",
@@ -187,10 +198,12 @@
      "type": "LPPROCESS_INFORMATION",
      "name": "lpProcessInformation"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CreateProcessWithLogonW": {
+   "callconv": "WINAPI",
+   "name": "CreateProcessWithLogonW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -247,10 +260,12 @@
      "type": "LPPROCESS_INFORMATION",
      "name": "lpProcessInformation"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CreateProcessWithTokenW": {
+   "callconv": "WINAPI",
+   "name": "CreateProcessWithTokenW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -297,10 +312,12 @@
      "type": "LPPROCESS_INFORMATION",
      "name": "lpProcessInformation"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CreateServiceA": {
+   "callconv": "WINAPI",
+   "name": "CreateServiceA",
+   "retVal": "HANDLE",
    "params": [
     {
      "anno": "_In_",
@@ -367,10 +384,12 @@
      "type": "LPCSTR",
      "name": "lpPassword"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
   "CreateServiceW": {
+   "callconv": "WINAPI",
+   "name": "CreateServiceW",
+   "retVal": "HANDLE",
    "params": [
     {
      "anno": "_In_",
@@ -437,100 +456,34 @@
      "type": "LPCWSTR",
      "name": "lpPassword"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
-  "EnumServicesStatusA": {
+  "LookupPrivilegeValueA": {
+   "callconv": "WINAPI",
+   "name": "LookupPrivilegeValueA",
+   "retVal": "BOOL",
    "params": [
     {
-     "anno": "_In_",
-     "type": "SC_HANDLE",
-     "name": "hSCManager"
+     "anno": "_In_opt_",
+     "type": "LPCSTR",
+     "name": "lpSystemName"
     },
     {
      "anno": "_In_",
-     "type": "DWORD",
-     "name": "dwServiceType"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "dwServiceState"
-    },
-    {
-     "anno": "_Out_writes_bytes_opt_(cbBufSize)",
-     "type": "LPENUM_SERVICE_STATUSA",
-     "name": "lpServices"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "cbBufSize"
+     "type": "LPCSTR",
+     "name": "lpName"
     },
     {
      "anno": "_Out_",
-     "type": "LPDWORD",
-     "name": "pcbBytesNeeded"
-    },
-    {
-     "anno": "_Out_",
-     "type": "LPDWORD",
-     "name": "lpServicesReturned"
-    },
-    {
-     "anno": "_Inout_opt_",
-     "type": "LPDWORD",
-     "name": "lpResumeHandle"
+     "type": "PLUID",
+     "name": "lpLuid"
     }
-   ],
-   "retVal": "BOOL"
-  },
-  "EnumServicesStatusW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "SC_HANDLE",
-     "name": "hSCManager"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "dwServiceType"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "dwServiceState"
-    },
-    {
-     "anno": "_Out_writes_bytes_opt_(cbBufSize)",
-     "type": "LPENUM_SERVICE_STATUSW",
-     "name": "lpServices"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "cbBufSize"
-    },
-    {
-     "anno": "_Out_",
-     "type": "LPDWORD",
-     "name": "pcbBytesNeeded"
-    },
-    {
-     "anno": "_Out_",
-     "type": "LPDWORD",
-     "name": "lpServicesReturned"
-    },
-    {
-     "anno": "_Inout_opt_",
-     "type": "LPDWORD",
-     "name": "lpResumeHandle"
-    }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "LookupPrivilegeValueW": {
+   "callconv": "WINAPI",
+   "name": "LookupPrivilegeValueW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_opt_",
@@ -547,10 +500,12 @@
      "type": "PLUID",
      "name": "lpLuid"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "OpenProcessToken": {
+   "callconv": "WINAPI",
+   "name": "OpenProcessToken",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -567,10 +522,12 @@
      "type": "PHANDLE",
      "name": "TokenHandle"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "OpenSCManagerA": {
+   "callconv": "WINAPI",
+   "name": "OpenSCManagerA",
+   "retVal": "HANDLE",
    "params": [
     {
      "anno": "_In_opt_",
@@ -587,10 +544,12 @@
      "type": "DWORD",
      "name": "dwDesiredAccess"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
   "OpenSCManagerW": {
+   "callconv": "WINAPI",
+   "name": "OpenSCManagerW",
+   "retVal": "HANDLE",
    "params": [
     {
      "anno": "_In_opt_",
@@ -607,10 +566,12 @@
      "type": "DWORD",
      "name": "dwDesiredAccess"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
   "OpenServiceA": {
+   "callconv": "WINAPI",
+   "name": "OpenServiceA",
+   "retVal": "HANDLE",
    "params": [
     {
      "anno": "_In_",
@@ -627,10 +588,12 @@
      "type": "DWORD",
      "name": "dwDesiredAccess"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
   "OpenServiceW": {
+   "callconv": "WINAPI",
+   "name": "OpenServiceW",
+   "retVal": "HANDLE",
    "params": [
     {
      "anno": "_In_",
@@ -647,20 +610,24 @@
      "type": "DWORD",
      "name": "dwDesiredAccess"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
   "RegCloseKey": {
+   "callconv": "APIENTRY",
+   "name": "RegCloseKey",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
      "type": "HKEY",
      "name": "hKey"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegCreateKeyA": {
+   "callconv": "APIENTRY",
+   "name": "RegCreateKeyA",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -677,10 +644,12 @@
      "type": "PHKEY",
      "name": "phkResult"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegCreateKeyExA": {
+   "callconv": "APIENTRY",
+   "name": "RegCreateKeyExA",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -727,10 +696,12 @@
      "type": "LPDWORD",
      "name": "lpdwDisposition"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegCreateKeyExW": {
+   "callconv": "APIENTRY",
+   "name": "RegCreateKeyExW",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -777,10 +748,12 @@
      "type": "LPDWORD",
      "name": "lpdwDisposition"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegCreateKeyW": {
+   "callconv": "APIENTRY",
+   "name": "RegCreateKeyW",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -797,10 +770,12 @@
      "type": "PHKEY",
      "name": "phkResult"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegDeleteKeyA": {
+   "callconv": "APIENTRY",
+   "name": "RegDeleteKeyA",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -812,10 +787,12 @@
      "type": "LPCSTR",
      "name": "lpSubKey"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegDeleteKeyW": {
+   "callconv": "APIENTRY",
+   "name": "RegDeleteKeyW",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -827,10 +804,12 @@
      "type": "LPCWSTR",
      "name": "lpSubKey"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegDeleteValueA": {
+   "callconv": "APIENTRY",
+   "name": "RegDeleteValueA",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -842,10 +821,12 @@
      "type": "LPCSTR",
      "name": "lpValueName"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegDeleteValueW": {
+   "callconv": "APIENTRY",
+   "name": "RegDeleteValueW",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -857,10 +838,12 @@
      "type": "LPCWSTR",
      "name": "lpValueName"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegEnumKeyExA": {
+   "callconv": "APIENTRY",
+   "name": "RegEnumKeyExA",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -902,10 +885,12 @@
      "type": "PFILETIME",
      "name": "lpftLastWriteTime"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegEnumKeyExW": {
+   "callconv": "APIENTRY",
+   "name": "RegEnumKeyExW",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -947,10 +932,12 @@
      "type": "PFILETIME",
      "name": "lpftLastWriteTime"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegEnumKeyW": {
+   "callconv": "APIENTRY",
+   "name": "RegEnumKeyW",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -972,10 +959,12 @@
      "type": "DWORD",
      "name": "cchName"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegEnumValueA": {
+   "callconv": "APIENTRY",
+   "name": "RegEnumValueA",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -1017,10 +1006,12 @@
      "type": "LPDWORD",
      "name": "lpcbData"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegEnumValueW": {
+   "callconv": "APIENTRY",
+   "name": "RegEnumValueW",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -1062,10 +1053,34 @@
      "type": "LPDWORD",
      "name": "lpcbData"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
+  },
+  "RegOpenKeyA": {
+   "callconv": "APIENTRY",
+   "name": "RegOpenKeyA",
+   "retVal": "LSTATUS",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "HKEY",
+     "name": "hKey"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "LPCSTR",
+     "name": "lpSubKey"
+    },
+    {
+     "anno": "_Out_",
+     "type": "PHKEY",
+     "name": "phkResult"
+    }
+   ]
   },
   "RegOpenKeyExA": {
+   "callconv": "APIENTRY",
+   "name": "RegOpenKeyExA",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -1092,10 +1107,12 @@
      "type": "PHKEY",
      "name": "phkResult"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegOpenKeyExW": {
+   "callconv": "APIENTRY",
+   "name": "RegOpenKeyExW",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -1122,10 +1139,34 @@
      "type": "PHKEY",
      "name": "phkResult"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
+  },
+  "RegOpenKeyW": {
+   "callconv": "APIENTRY",
+   "name": "RegOpenKeyW",
+   "retVal": "LSTATUS",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "HKEY",
+     "name": "hKey"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "LPCWSTR",
+     "name": "lpSubKey"
+    },
+    {
+     "anno": "_Out_",
+     "type": "PHKEY",
+     "name": "phkResult"
+    }
+   ]
   },
   "RegQueryInfoKeyA": {
+   "callconv": "APIENTRY",
+   "name": "RegQueryInfoKeyA",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -1187,10 +1228,12 @@
      "type": "PFILETIME",
      "name": "lpftLastWriteTime"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegQueryInfoKeyW": {
+   "callconv": "APIENTRY",
+   "name": "RegQueryInfoKeyW",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -1252,10 +1295,12 @@
      "type": "PFILETIME",
      "name": "lpftLastWriteTime"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegQueryValueExA": {
+   "callconv": "APIENTRY",
+   "name": "RegQueryValueExA",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -1281,11 +1326,18 @@
      "anno": "_Out_writes_bytes_to_opt_(*lpcbData *lpcbData) __out_data_source(REGISTRY)",
      "type": "LPBYTE",
      "name": "lpData"
+    },
+    {
+     "anno": "_When_(lpData == NULL,_Out_opt_) _When_(lpData != NULL,_Inout_opt_)",
+     "type": "LPDWORD",
+     "name": "lpcbData"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegQueryValueExW": {
+   "callconv": "APIENTRY",
+   "name": "RegQueryValueExW",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -1311,11 +1363,18 @@
      "anno": "_Out_writes_bytes_to_opt_(*lpcbData *lpcbData) __out_data_source(REGISTRY)",
      "type": "LPBYTE",
      "name": "lpData"
+    },
+    {
+     "anno": "_When_(lpData == NULL,_Out_opt_) _When_(lpData != NULL,_Inout_opt_)",
+     "type": "LPDWORD",
+     "name": "lpcbData"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegSetValueExA": {
+   "callconv": "APIENTRY",
+   "name": "RegSetValueExA",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -1347,10 +1406,12 @@
      "type": "DWORD",
      "name": "cbData"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "RegSetValueExW": {
+   "callconv": "APIENTRY",
+   "name": "RegSetValueExW",
+   "retVal": "LSTATUS",
    "params": [
     {
      "anno": "_In_",
@@ -1382,10 +1443,12 @@
      "type": "DWORD",
      "name": "cbData"
     }
-   ],
-   "retVal": "LSTATUS"
+   ]
   },
   "StartServiceA": {
+   "callconv": "WINAPI",
+   "name": "StartServiceA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -1402,20 +1465,12 @@
      "type": "LPCSTR*",
      "name": "lpServiceArgVectors"
     }
-   ],
-   "retVal": "BOOL"
-  },
-  "StartServiceCtrlDispatcherW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "CONST SERVICE_TABLE_ENTRYW*",
-     "name": "lpServiceStartTable"
-    }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "StartServiceW": {
+   "callconv": "WINAPI",
+   "name": "StartServiceW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -1432,12 +1487,14 @@
      "type": "LPCWSTR*",
      "name": "lpServiceArgVectors"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   }
  },
  "bcrypt.dll": {
   "BCryptDecrypt": {
+   "callconv": "WINAPI",
+   "name": "BCryptDecrypt",
+   "retVal": "NTSTATUS",
    "params": [
     {
      "anno": "_Inout_",
@@ -1489,10 +1546,12 @@
      "type": "ULONG",
      "name": "dwFlags"
     }
-   ],
-   "retVal": "NTSTATUS"
+   ]
   },
   "BCryptEncrypt": {
+   "callconv": "WINAPI",
+   "name": "BCryptEncrypt",
+   "retVal": "NTSTATUS",
    "params": [
     {
      "anno": "_Inout_",
@@ -1544,10 +1603,12 @@
      "type": "ULONG",
      "name": "dwFlags"
     }
-   ],
-   "retVal": "NTSTATUS"
+   ]
   },
   "BCryptHashData": {
+   "callconv": "WINAPI",
+   "name": "BCryptHashData",
+   "retVal": "NTSTATUS",
    "params": [
     {
      "anno": "_Inout_",
@@ -1569,12 +1630,26 @@
      "type": "ULONG",
      "name": "dwFlags"
     }
-   ],
-   "retVal": "NTSTATUS"
+   ]
   }
  },
  "kernel32.dll": {
+  "CloseHandle": {
+   "callconv": "WINAPI",
+   "name": "CloseHandle",
+   "retVal": "BOOL",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "_Post_ptr_invalid_ HANDLE",
+     "name": "hObject"
+    }
+   ]
+  },
   "CopyFileA": {
+   "callconv": "WINAPI",
+   "name": "CopyFileA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -1591,10 +1666,12 @@
      "type": "BOOL",
      "name": "bFailIfExists"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CopyFileExW": {
+   "callconv": "WINAPI",
+   "name": "CopyFileExW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -1617,14 +1694,21 @@
      "name": "lpData"
     },
     {
+     "anno": "_When_(pbCancel != NULL _Pre_satisfies_(*pbCancel == FALSE)) _Inout_opt_",
+     "type": "LPBOOL",
+     "name": "pbCancel"
+    },
+    {
      "anno": "_In_",
      "type": "DWORD",
      "name": "dwCopyFlags"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CopyFileW": {
+   "callconv": "WINAPI",
+   "name": "CopyFileW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -1641,10 +1725,12 @@
      "type": "BOOL",
      "name": "bFailIfExists"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CreateDirectoryA": {
+   "callconv": "WINAPI",
+   "name": "CreateDirectoryA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -1656,10 +1742,12 @@
      "type": "LPSECURITY_ATTRIBUTES",
      "name": "lpSecurityAttributes"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CreateDirectoryExA": {
+   "callconv": "WINAPI",
+   "name": "CreateDirectoryExA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -1676,10 +1764,12 @@
      "type": "LPSECURITY_ATTRIBUTES",
      "name": "lpSecurityAttributes"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CreateDirectoryExW": {
+   "callconv": "WINAPI",
+   "name": "CreateDirectoryExW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -1696,10 +1786,12 @@
      "type": "LPSECURITY_ATTRIBUTES",
      "name": "lpSecurityAttributes"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CreateDirectoryW": {
+   "callconv": "WINAPI",
+   "name": "CreateDirectoryW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -1711,10 +1803,12 @@
      "type": "LPSECURITY_ATTRIBUTES",
      "name": "lpSecurityAttributes"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CreateFileA": {
+   "callconv": "WINAPI",
+   "name": "CreateFileA",
+   "retVal": "HANDLE",
    "params": [
     {
      "anno": "_In_",
@@ -1751,10 +1845,12 @@
      "type": "HANDLE",
      "name": "hTemplateFile"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
   "CreateFileW": {
+   "callconv": "WINAPI",
+   "name": "CreateFileW",
+   "retVal": "HANDLE",
    "params": [
     {
      "anno": "_In_",
@@ -1791,10 +1887,12 @@
      "type": "HANDLE",
      "name": "hTemplateFile"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
   "CreateProcessA": {
+   "callconv": "WINAPI",
+   "name": "CreateProcessA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_opt_",
@@ -1846,10 +1944,12 @@
      "type": "LPPROCESS_INFORMATION",
      "name": "lpProcessInformation"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "CreateProcessW": {
+   "callconv": "WINAPI",
+   "name": "CreateProcessW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_opt_",
@@ -1901,539 +2001,224 @@
      "type": "LPPROCESS_INFORMATION",
      "name": "lpProcessInformation"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
-  "CreateToolhelp32Snapshot": {
+  "CreateThread": {
+   "callconv": "WINAPI",
+   "name": "CreateThread",
+   "retVal": "HANDLE",
    "params": [
     {
+     "anno": "_In_opt_",
+     "type": "LPSECURITY_ATTRIBUTES",
+     "name": "lpThreadAttributes"
+    },
+    {
      "anno": "_In_",
-     "type": " DWORD",
-     "name": "dwFlags"
+     "type": "SIZE_T",
+     "name": "dwStackSize"
+    },
+    {
+     "anno": "_In_",
+     "type": "LPTHREAD_START_ROUTINE",
+     "name": "lpStartAddress"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "__drv_aliasesMem LPVOID",
+     "name": "lpParameter"
     },
     {
      "anno": "_In_",
      "type": "DWORD",
-     "name": "th32ProcessID"
+     "name": "dwCreationFlags"
+    },
+    {
+     "anno": "_Out_opt_",
+     "type": "LPDWORD",
+     "name": "lpThreadId"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
   "DeleteFileA": {
+   "callconv": "WINAPI",
+   "name": "DeleteFileA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
      "type": "LPCSTR",
      "name": "lpFileName"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "DeleteFileW": {
+   "callconv": "WINAPI",
+   "name": "DeleteFileW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
      "type": "LPCWSTR",
      "name": "lpFileName"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
-  "FindFirstFileA": {
+  "GetProcAddress": {
+   "callconv": "WINAPI",
+   "name": "GetProcAddress",
+   "retVal": "FARPROC",
    "params": [
     {
      "anno": "_In_",
-     "type": "LPCSTR",
-     "name": "lpFileName"
+     "type": "HMODULE",
+     "name": "hModule"
     },
     {
-     "anno": "_Out_",
-     "type": "LPWIN32_FIND_DATAA",
-     "name": "lpFindFileData"
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpProcName"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
-  "FindFirstFileExA": {
+  "LoadLibraryA": {
+   "callconv": "WINAPI",
+   "name": "LoadLibraryA",
+   "retVal": "HMODULE",
    "params": [
     {
      "anno": "_In_",
      "type": "LPCSTR",
-     "name": "lpFileName"
-    },
+     "name": "lpLibFileName"
+    }
+   ]
+  },
+  "LoadLibraryExA": {
+   "callconv": "WINAPI",
+   "name": "LoadLibraryExA",
+   "retVal": "HMODULE",
+   "params": [
     {
      "anno": "_In_",
-     "type": "FINDEX_INFO_LEVELS",
-     "name": "fInfoLevelId"
-    },
-    {
-     "anno": "_Out_writes_bytes_(sizeof(WIN32_FIND_DATAA))",
-     "type": "LPVOID",
-     "name": "lpFindFileData"
-    },
-    {
-     "anno": "_In_",
-     "type": "FINDEX_SEARCH_OPS",
-     "name": "fSearchOp"
+     "type": "LPCSTR",
+     "name": "lpLibFileName"
     },
     {
      "anno": "_Reserved_",
-     "type": "LPVOID",
-     "name": "lpSearchFilter"
+     "type": "HANDLE",
+     "name": "hFile"
     },
     {
      "anno": "_In_",
      "type": "DWORD",
-     "name": "dwAdditionalFlags"
+     "name": "dwFlags"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
-  "FindFirstFileExW": {
+  "LoadLibraryExW": {
+   "callconv": "WINAPI",
+   "name": "LoadLibraryExW",
+   "retVal": "HMODULE",
    "params": [
     {
      "anno": "_In_",
      "type": "LPCWSTR",
-     "name": "lpFileName"
-    },
-    {
-     "anno": "_In_",
-     "type": "FINDEX_INFO_LEVELS",
-     "name": "fInfoLevelId"
-    },
-    {
-     "anno": "_Out_writes_bytes_(sizeof(WIN32_FIND_DATAW))",
-     "type": "LPVOID",
-     "name": "lpFindFileData"
-    },
-    {
-     "anno": "_In_",
-     "type": "FINDEX_SEARCH_OPS",
-     "name": "fSearchOp"
+     "name": "lpLibFileName"
     },
     {
      "anno": "_Reserved_",
-     "type": "LPVOID",
-     "name": "lpSearchFilter"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "dwAdditionalFlags"
-    }
-   ],
-   "retVal": "HANDLE"
-  },
-  "FindFirstFileW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "LPCWSTR",
-     "name": "lpFileName"
-    },
-    {
-     "anno": "_Out_",
-     "type": "LPWIN32_FIND_DATAW",
-     "name": "lpFindFileData"
-    }
-   ],
-   "retVal": "HANDLE"
-  },
-  "FindNextFileA": {
-   "params": [
-    {
-     "anno": "_In_",
      "type": "HANDLE",
-     "name": "hFindFile"
-    },
-    {
-     "anno": "_Out_",
-     "type": "LPWIN32_FIND_DATAA",
-     "name": "lpFindFileData"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "FindNextFileW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "HANDLE",
-     "name": "hFindFile"
-    },
-    {
-     "anno": "_Out_",
-     "type": "LPWIN32_FIND_DATAW",
-     "name": "lpFindFileData"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "FindResourceA": {
-   "params": [
-    {
-     "anno": "_In_opt_",
-     "type": "HMODULE",
-     "name": "hModule"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPCSTR",
-     "name": "lpName"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPCSTR",
-     "name": "lpType"
-    }
-   ],
-   "retVal": "HRSRC"
-  },
-  "FindResourceExA": {
-   "params": [
-    {
-     "anno": "_In_opt_",
-     "type": "HMODULE",
-     "name": "hModule"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPCSTR",
-     "name": "lpType"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPCSTR",
-     "name": "lpName"
-    },
-    {
-     "anno": "_In_",
-     "type": "WORD",
-     "name": "wLanguage"
-    }
-   ],
-   "retVal": "HRSRC"
-  },
-  "GetDiskFreeSpaceA": {
-   "params": [
-    {
-     "anno": "_In_opt_",
-     "type": "LPCSTR",
-     "name": "lpRootPathName"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpSectorsPerCluster"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpBytesPerSector"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpNumberOfFreeClusters"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpTotalNumberOfClusters"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "GetDiskFreeSpaceExA": {
-   "params": [
-    {
-     "anno": "_In_opt_",
-     "type": "LPCSTR",
-     "name": "lpDirectoryName"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "PULARGE_INTEGER",
-     "name": "lpFreeBytesAvailableToCaller"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "PULARGE_INTEGER",
-     "name": "lpTotalNumberOfBytes"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "PULARGE_INTEGER",
-     "name": "lpTotalNumberOfFreeBytes"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "GetDiskFreeSpaceExW": {
-   "params": [
-    {
-     "anno": "_In_opt_",
-     "type": "LPCWSTR",
-     "name": "lpDirectoryName"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "PULARGE_INTEGER",
-     "name": "lpFreeBytesAvailableToCaller"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "PULARGE_INTEGER",
-     "name": "lpTotalNumberOfBytes"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "PULARGE_INTEGER",
-     "name": "lpTotalNumberOfFreeBytes"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "GetDiskFreeSpaceW": {
-   "params": [
-    {
-     "anno": "_In_opt_",
-     "type": "LPCWSTR",
-     "name": "lpRootPathName"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpSectorsPerCluster"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpBytesPerSector"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpNumberOfFreeClusters"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpTotalNumberOfClusters"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "GetFileAttributesA": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "LPCSTR",
-     "name": "lpFileName"
-    }
-   ],
-   "retVal": "DWORD"
-  },
-  "GetFileAttributesExA": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "LPCSTR",
-     "name": "lpFileName"
-    },
-    {
-     "anno": "_In_",
-     "type": "GET_FILEEX_INFO_LEVELS",
-     "name": "fInfoLevelId"
-    },
-    {
-     "anno": "_Out_writes_bytes_(sizeof(WIN32_FILE_ATTRIBUTE_DATA))",
-     "type": "LPVOID",
-     "name": "lpFileInformation"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "GetFileAttributesExW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "LPCWSTR",
-     "name": "lpFileName"
-    },
-    {
-     "anno": "_In_",
-     "type": "GET_FILEEX_INFO_LEVELS",
-     "name": "fInfoLevelId"
-    },
-    {
-     "anno": "_Out_writes_bytes_(sizeof(WIN32_FILE_ATTRIBUTE_DATA))",
-     "type": "LPVOID",
-     "name": "lpFileInformation"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "GetFileAttributesW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "LPCWSTR",
-     "name": "lpFileName"
-    }
-   ],
-   "retVal": "DWORD"
-  },
-  "GetNativeSystemInfo": {
-   "params": [
-    {
-     "anno": "_Out_",
-     "type": "LPSYSTEM_INFO",
-     "name": "lpSystemInfo"
-    }
-   ],
-   "retVal": "VOID"
-  },
-  "GetSystemInfo": {
-   "params": [
-    {
-     "anno": "_Out_",
-     "type": "LPSYSTEM_INFO",
-     "name": "lpSystemInfo"
-    }
-   ],
-   "retVal": "VOID"
-  },
-  "GetVolumeInformationA": {
-   "params": [
-    {
-     "anno": "_In_opt_",
-     "type": "LPCSTR",
-     "name": "lpRootPathName"
-    },
-    {
-     "anno": "_Out_writes_opt_(nVolumeNameSize)",
-     "type": "LPSTR",
-     "name": "lpVolumeNameBuffer"
+     "name": "hFile"
     },
     {
      "anno": "_In_",
      "type": "DWORD",
-     "name": "nVolumeNameSize"
+     "name": "dwFlags"
+    }
+   ]
+  },
+  "LoadLibraryW": {
+   "callconv": "WINAPI",
+   "name": "LoadLibraryW",
+   "retVal": "HMODULE",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCWSTR",
+     "name": "lpLibFileName"
+    }
+   ]
+  },
+  "MoveFileA": {
+   "callconv": "WINAPI",
+   "name": "MoveFileA",
+   "retVal": "BOOL",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpExistingFileName"
     },
     {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpVolumeSerialNumber"
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpNewFileName"
+    }
+   ]
+  },
+  "MoveFileW": {
+   "callconv": "WINAPI",
+   "name": "MoveFileW",
+   "retVal": "BOOL",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCWSTR",
+     "name": "lpExistingFileName"
     },
     {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpMaximumComponentLength"
+     "anno": "_In_",
+     "type": "LPCWSTR",
+     "name": "lpNewFileName"
+    }
+   ]
+  },
+  "MoveFileWithProgressA": {
+   "callconv": "WINAPI",
+   "name": "MoveFileWithProgressA",
+   "retVal": "BOOL",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "LPCSTR",
+     "name": "lpExistingFileName"
     },
     {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpFileSystemFlags"
+     "anno": "_In_opt_",
+     "type": "LPCSTR",
+     "name": "lpNewFileName"
     },
     {
-     "anno": "_Out_writes_opt_(nFileSystemNameSize)",
-     "type": "LPSTR",
-     "name": "lpFileSystemNameBuffer"
+     "anno": "_In_opt_",
+     "type": "LPPROGRESS_ROUTINE",
+     "name": "lpProgressRoutine"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "LPVOID",
+     "name": "lpData"
     },
     {
      "anno": "_In_",
      "type": "DWORD",
-     "name": "nFileSystemNameSize"
+     "name": "dwFlags"
     }
-   ],
-   "retVal": "BOOL"
-  },
-  "GlobalMemoryStatus": {
-   "params": [
-    {
-     "anno": "_Out_",
-     "type": "LPMEMORYSTATUS",
-     "name": "lpBuffer"
-    }
-   ],
-   "retVal": "VOID"
-  },
-  "GlobalMemoryStatusEx": {
-   "params": [
-    {
-     "anno": "_Out_",
-     "type": "LPMEMORYSTATUSEX",
-     "name": "lpBuffer"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "Heap32ListFirst": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": " HANDLE",
-     "name": "hSnapshot"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPHEAPLIST32",
-     "name": "lphl"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "IsDebuggerPresent": {
-   "params": null,
-   "retVal": "BOOL"
-  },
-  "LoadResource": {
-   "params": [
-    {
-     "anno": "_In_opt_",
-     "type": "HMODULE",
-     "name": "hModule"
-    },
-    {
-     "anno": "_In_",
-     "type": "HRSRC",
-     "name": "hResInfo"
-    }
-   ],
-   "retVal": "HGLOBAL"
-  },
-  "Module32FirstW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": " HANDLE",
-     "name": "hSnapshot"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPMODULEENTRY32W",
-     "name": "lpme"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "Module32NextW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": " HANDLE",
-     "name": "hSnapshot"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPMODULEENTRY32W",
-     "name": "lpme"
-    }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "MoveFileWithProgressW": {
+   "callconv": "WINAPI",
+   "name": "MoveFileWithProgressW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -2460,10 +2245,12 @@
      "type": "DWORD",
      "name": "dwFlags"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "OpenProcess": {
+   "callconv": "WINAPI",
+   "name": "OpenProcess",
+   "retVal": "HANDLE",
    "params": [
     {
      "anno": "_In_",
@@ -2480,245 +2267,241 @@
      "type": "DWORD",
      "name": "dwProcessId"
     }
-   ],
-   "retVal": "HANDLE"
+   ]
   },
-  "OutputDebugStringA": {
+  "VirtualAlloc": {
+   "callconv": "WINAPI",
+   "name": "VirtualAlloc",
+   "retVal": "LPVOID",
    "params": [
     {
      "anno": "_In_opt_",
-     "type": "LPCSTR",
-     "name": "lpOutputString"
-    }
-   ],
-   "retVal": "VOID"
-  },
-  "Process32FirstW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": " HANDLE",
-     "name": "hSnapshot"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPPROCESSENTRY32W",
-     "name": "lppe"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "Process32NextW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": " HANDLE",
-     "name": "hSnapshot"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPPROCESSENTRY32W",
-     "name": "lppe"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "QueueUserAPC": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "PAPCFUNC",
-     "name": "pfnAPC"
-    },
-    {
-     "anno": "_In_",
-     "type": "HANDLE",
-     "name": "hThread"
-    },
-    {
-     "anno": "_In_",
-     "type": "ULONG_PTR",
-     "name": "dwData"
-    }
-   ],
-   "retVal": "DWORD"
-  },
-  "ReadFile": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "HANDLE",
-     "name": "hFile"
-    },
-    {
-     "anno": "_Out_writes_bytes_to_opt_(nNumberOfBytesToRead *lpNumberOfBytesRead)",
      "type": "LPVOID",
-     "name": "lpBuffer"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "nNumberOfBytesToRead"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpNumberOfBytesRead"
-    },
-    {
-     "anno": "_Inout_opt_",
-     "type": "LPOVERLAPPED",
-     "name": "lpOverlapped"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "ReadFileEx": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "HANDLE",
-     "name": "hFile"
-    },
-    {
-     "anno": "_Out_writes_bytes_opt_(nNumberOfBytesToRead)",
-     "type": "LPVOID",
-     "name": "lpBuffer"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "nNumberOfBytesToRead"
-    },
-    {
-     "anno": "_Inout_",
-     "type": "LPOVERLAPPED",
-     "name": "lpOverlapped"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPOVERLAPPED_COMPLETION_ROUTINE",
-     "name": "lpCompletionRoutine"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "ReadFileScatter": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "HANDLE",
-     "name": "hFile"
-    },
-    {
-     "anno": "_In_",
-     "type": "FILE_SEGMENT_ELEMENT",
-     "name": "aSegmentArray"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "nNumberOfBytesToRead"
-    },
-    {
-     "anno": "_Reserved_",
-     "type": "LPDWORD",
-     "name": "lpReserved"
-    },
-    {
-     "anno": "_Inout_",
-     "type": "LPOVERLAPPED",
-     "name": "lpOverlapped"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "ReadProcessMemory": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "HANDLE",
-     "name": "hProcess"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPCVOID",
-     "name": "lpBaseAddress"
-    },
-    {
-     "anno": "_Out_writes_bytes_to_(nSize,*lpNumberOfBytesRead)",
-     "type": "LPVOID",
-     "name": "lpBuffer"
+     "name": "lpAddress"
     },
     {
      "anno": "_In_",
      "type": "SIZE_T",
-     "name": "nSize"
+     "name": "dwSize"
     },
     {
-     "anno": "_Out_opt_",
-     "type": "SIZE_T*",
-     "name": "lpNumberOfBytesRead"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "RemoveDirectoryA": {
-   "params": [
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "flAllocationType"
+    },
     {
      "anno": "_In_",
-     "type": "LPCSTR",
-     "name": "lpPathName"
+     "type": "DWORD",
+     "name": "flProtect"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
-  "RemoveDirectoryW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "LPCWSTR",
-     "name": "lpPathName"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "ResumeThread": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "HANDLE",
-     "name": "hThread"
-    }
-   ],
-   "retVal": "DWORD"
-  },
-  "SizeofResource": {
+  "VirtualAlloc2": {
+   "callconv": "WINAPI",
+   "name": "VirtualAlloc2",
+   "retVal": "PVOID",
    "params": [
     {
      "anno": "_In_opt_",
-     "type": "HMODULE",
-     "name": "hModule"
+     "type": "HANDLE",
+     "name": "Process"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "PVOID",
+     "name": "BaseAddress"
     },
     {
      "anno": "_In_",
-     "type": "HRSRC",
-     "name": "hResInfo"
+     "type": "SIZE_T",
+     "name": "Size"
+    },
+    {
+     "anno": "_In_",
+     "type": "ULONG",
+     "name": "AllocationType"
+    },
+    {
+     "anno": "_In_",
+     "type": "ULONG",
+     "name": "PageProtection"
+    },
+    {
+     "anno": "_Inout_updates_opt_(ParameterCount)",
+     "type": "MEM_EXTENDED_PARAMETER*",
+     "name": "ExtendedParameters"
+    },
+    {
+     "anno": "_In_",
+     "type": "ULONG",
+     "name": "ParameterCount"
     }
-   ],
-   "retVal": "DWORD"
+   ]
   },
-  "SuspendThread": {
+  "VirtualAlloc2FromApp": {
+   "callconv": "WINAPI",
+   "name": "VirtualAlloc2FromApp",
+   "retVal": "PVOID",
+   "params": [
+    {
+     "anno": "_In_opt_",
+     "type": "HANDLE",
+     "name": "Process"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "PVOID",
+     "name": "BaseAddress"
+    },
+    {
+     "anno": "_In_",
+     "type": "SIZE_T",
+     "name": "Size"
+    },
+    {
+     "anno": "_In_",
+     "type": "ULONG",
+     "name": "AllocationType"
+    },
+    {
+     "anno": "_In_",
+     "type": "ULONG",
+     "name": "PageProtection"
+    },
+    {
+     "anno": "_Inout_updates_opt_(ParameterCount)",
+     "type": "MEM_EXTENDED_PARAMETER*",
+     "name": "ExtendedParameters"
+    },
+    {
+     "anno": "_In_",
+     "type": "ULONG",
+     "name": "ParameterCount"
+    }
+   ]
+  },
+  "VirtualAllocEx": {
+   "callconv": "WINAPI",
+   "name": "VirtualAllocEx",
+   "retVal": "LPVOID",
    "params": [
     {
      "anno": "_In_",
      "type": "HANDLE",
-     "name": "hThread"
+     "name": "hProcess"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "LPVOID",
+     "name": "lpAddress"
+    },
+    {
+     "anno": "_In_",
+     "type": "SIZE_T",
+     "name": "dwSize"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "flAllocationType"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "flProtect"
     }
-   ],
-   "retVal": "DWORD"
+   ]
   },
-  "TerminateProcess": {
+  "VirtualAllocExNuma": {
+   "callconv": "WINAPI",
+   "name": "VirtualAllocExNuma",
+   "retVal": "LPVOID",
+   "params": [
+    {
+     "anno": "_In_",
+     "type": "HANDLE",
+     "name": "hProcess"
+    },
+    {
+     "anno": "_In_opt_",
+     "type": "LPVOID",
+     "name": "lpAddress"
+    },
+    {
+     "anno": "_In_",
+     "type": "SIZE_T",
+     "name": "dwSize"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "flAllocationType"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "flProtect"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "nndPreferred"
+    }
+   ]
+  },
+  "VirtualAllocFromApp": {
+   "callconv": "WINAPI",
+   "name": "VirtualAllocFromApp",
+   "retVal": "PVOID",
+   "params": [
+    {
+     "anno": "_In_opt_",
+     "type": "PVOID",
+     "name": "BaseAddress"
+    },
+    {
+     "anno": "_In_",
+     "type": "SIZE_T",
+     "name": "Size"
+    },
+    {
+     "anno": "_In_",
+     "type": "ULONG",
+     "name": "AllocationType"
+    },
+    {
+     "anno": "_In_",
+     "type": "ULONG",
+     "name": "Protection"
+    }
+   ]
+  },
+  "VirtualFree": {
+   "callconv": "WINAPI",
+   "name": "VirtualFree",
+   "retVal": "BOOL",
+   "params": [
+    {
+     "anno": "_When_(dwFreeType == MEM_DECOMMIT,_Post_invalid_) _When_(dwFreeType == MEM_RELEASE,_Post_ptr_invalid_)",
+     "type": "LPVOID",
+     "name": "lpAddress"
+    },
+    {
+     "anno": "_In_",
+     "type": "SIZE_T",
+     "name": "dwSize"
+    },
+    {
+     "anno": "_In_",
+     "type": "DWORD",
+     "name": "dwFreeType"
+    }
+   ]
+  },
+  "VirtualFreeEx": {
+   "callconv": "WINAPI",
+   "name": "VirtualFreeEx",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -2727,163 +2510,42 @@
     },
     {
      "anno": "_In_",
-     "type": "UINT",
-     "name": "uExitCode"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "Thread32First": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": " HANDLE",
-     "name": "hSnapshot"
+     "type": "SIZE_T",
+     "name": "dwSize"
     },
     {
      "anno": "_In_",
-     "type": "LPTHREADENTRY32",
-     "name": "lpte"
+     "type": "DWORD",
+     "name": "dwFreeType"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
-  "Thread32Next": {
+  "VirtualQuery": {
+   "callconv": "WINAPI",
+   "name": "VirtualQuery",
+   "retVal": "T",
    "params": [
     {
-     "anno": "_In_",
-     "type": " HANDLE",
-     "name": "hSnapshot"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPTHREADENTRY32",
-     "name": "lpte"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "Toolhelp32ReadProcessMemory": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": " DWORD",
-     "name": "th32ProcessID"
-    },
-    {
-     "anno": "_In_",
+     "anno": "_In_opt_",
      "type": "LPCVOID",
-     "name": "lpBaseAddress"
+     "name": "lpAddress"
     },
     {
-     "anno": "_In_",
-     "type": "LPVOID",
+     "anno": "_Out_writes_bytes_to_(dwLength,return)",
+     "type": "PMEMORY_BASIC_INFORMATION",
      "name": "lpBuffer"
     },
     {
      "anno": "_In_",
      "type": "SIZE_T",
-     "name": "cbRead"
-    },
-    {
-     "anno": "_In_",
-     "type": "SIZE_T*",
-     "name": "lpNumberOfBytesRead"
+     "name": "dwLength"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
-  "WriteFile": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "HANDLE",
-     "name": "hFile"
-    },
-    {
-     "anno": "_In_reads_bytes_opt_(nNumberOfBytesToWrite)",
-     "type": "LPCVOID",
-     "name": "lpBuffer"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "nNumberOfBytesToWrite"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "LPDWORD",
-     "name": "lpNumberOfBytesWritten"
-    },
-    {
-     "anno": "_Inout_opt_",
-     "type": "LPOVERLAPPED",
-     "name": "lpOverlapped"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "WriteFileEx": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "HANDLE",
-     "name": "hFile"
-    },
-    {
-     "anno": "_In_reads_bytes_opt_(nNumberOfBytesToWrite)",
-     "type": "LPCVOID",
-     "name": "lpBuffer"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "nNumberOfBytesToWrite"
-    },
-    {
-     "anno": "_Inout_",
-     "type": "LPOVERLAPPED",
-     "name": "lpOverlapped"
-    },
-    {
-     "anno": "_In_",
-     "type": "LPOVERLAPPED_COMPLETION_ROUTINE",
-     "name": "lpCompletionRoutine"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "WriteFileGather": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "HANDLE",
-     "name": "hFile"
-    },
-    {
-     "anno": "_In_",
-     "type": "FILE_SEGMENT_ELEMENT",
-     "name": "aSegmentArray"
-    },
-    {
-     "anno": "_In_",
-     "type": "DWORD",
-     "name": "nNumberOfBytesToWrite"
-    },
-    {
-     "anno": "_Reserved_",
-     "type": "LPDWORD",
-     "name": "lpReserved"
-    },
-    {
-     "anno": "_Inout_",
-     "type": "LPOVERLAPPED",
-     "name": "lpOverlapped"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "WriteProcessMemory": {
+  "VirtualQueryEx": {
+   "callconv": "WINAPI",
+   "name": "VirtualQueryEx",
+   "retVal": "T",
    "params": [
     {
      "anno": "_In_",
@@ -2891,123 +2553,246 @@
      "name": "hProcess"
     },
     {
-     "anno": "_In_",
-     "type": "LPVOID",
-     "name": "lpBaseAddress"
+     "anno": "_In_opt_",
+     "type": "LPCVOID",
+     "name": "lpAddress"
     },
     {
-     "anno": "_In_reads_bytes_(nSize)",
-     "type": "LPCVOID",
+     "anno": "_Out_writes_bytes_to_(dwLength,return)",
+     "type": "PMEMORY_BASIC_INFORMATION",
      "name": "lpBuffer"
     },
     {
      "anno": "_In_",
      "type": "SIZE_T",
-     "name": "nSize"
-    },
-    {
-     "anno": "_Out_opt_",
-     "type": "SIZE_T*",
-     "name": "lpNumberOfBytesWritten"
+     "name": "dwLength"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   }
  },
- "user32.dll": {
-  "GetAsyncKeyState": {
+ "winhttp.dll": {
+  "WinHttpConnect": {
+   "callconv": "WINAPI",
+   "name": "WinHttpConnect",
+   "retVal": "HINTERNET",
    "params": [
     {
-     "anno": "_In_",
-     "type": "int",
-     "name": "vKey"
-    }
-   ],
-   "retVal": "SHORT"
-  },
-  "GetKeyState": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "int",
-     "name": "nVirtKey"
-    }
-   ],
-   "retVal": "SHORT"
-  },
-  "GetKeyboardState": {
-   "params": [
-    {
-     "anno": "_Out_writes_(256)",
-     "type": "PBYTE",
-     "name": "lpKeyState"
-    }
-   ],
-   "retVal": "BOOL"
-  },
-  "SetWindowsHookExA": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "int",
-     "name": "idHook"
+     "anno": "IN",
+     "type": "HINTERNET",
+     "name": "hSession"
     },
     {
-     "anno": "_In_",
-     "type": "HOOKPROC",
-     "name": "lpfn"
+     "anno": "IN",
+     "type": "LPCWSTR",
+     "name": "pswzServerName"
     },
     {
-     "anno": "_In_opt_",
-     "type": "HINSTANCE",
-     "name": "hmod"
+     "anno": "IN",
+     "type": "INTERNET_PORT",
+     "name": "nServerPort"
+    },
+    {
+     "anno": "IN",
+     "type": "DWORD",
+     "name": "dwReserved"
+    }
+   ]
+  },
+  "WinHttpOpen": {
+   "callconv": "WINAPI",
+   "name": "WinHttpOpen",
+   "retVal": "HINTERNET",
+   "params": [
+    {
+     "anno": "_In_opt_z_",
+     "type": "LPCWSTR",
+     "name": "pszAgentW"
     },
     {
      "anno": "_In_",
      "type": "DWORD",
-     "name": "dwThreadId"
-    }
-   ],
-   "retVal": "HHOOK"
-  },
-  "SetWindowsHookExW": {
-   "params": [
-    {
-     "anno": "_In_",
-     "type": "int",
-     "name": "idHook"
+     "name": "dwAccessType"
     },
     {
-     "anno": "_In_",
-     "type": "HOOKPROC",
-     "name": "lpfn"
+     "anno": "_In_opt_z_",
+     "type": "LPCWSTR",
+     "name": "pszProxyW"
     },
     {
-     "anno": "_In_opt_",
-     "type": "HINSTANCE",
-     "name": "hmod"
+     "anno": "_In_opt_z_",
+     "type": "LPCWSTR",
+     "name": "pszProxyBypassW"
     },
     {
      "anno": "_In_",
      "type": "DWORD",
-     "name": "dwThreadId"
+     "name": "dwFlags"
     }
-   ],
-   "retVal": "HHOOK"
+   ]
   },
-  "UnhookWindowsHookEx": {
+  "WinHttpOpenRequest": {
+   "callconv": "WINAPI",
+   "name": "WinHttpOpenRequest",
+   "retVal": "HINTERNET",
    "params": [
     {
-     "anno": "_In_",
-     "type": "HHOOK",
-     "name": "hhk"
+     "anno": "IN",
+     "type": "HINTERNET",
+     "name": "hConnect"
+    },
+    {
+     "anno": "IN",
+     "type": "LPCWSTR",
+     "name": "pwszVerb"
+    },
+    {
+     "anno": "IN",
+     "type": "LPCWSTR",
+     "name": "pwszObjectName"
+    },
+    {
+     "anno": "IN",
+     "type": "LPCWSTR",
+     "name": "pwszVersion"
+    },
+    {
+     "anno": "IN",
+     "type": "LPCWSTR",
+     "name": "pwszReferrer"
+    },
+    {
+     "anno": "IN",
+     "type": "LPCWSTR FAR *",
+     "name": "ppwszAcceptTypes"
+    },
+    {
+     "anno": "IN",
+     "type": "DWORD",
+     "name": "dwFlags"
     }
-   ],
-   "retVal": "BOOL"
+   ]
+  },
+  "WinHttpQueryAuthSchemes": {
+   "callconv": "WINAPI",
+   "name": "WinHttpQueryAuthSchemes",
+   "retVal": "BOOL",
+   "params": [
+    {
+     "anno": "IN",
+     "type": "HINTERNET",
+     "name": "hRequest"
+    }
+   ]
+  },
+  "WinHttpQueryDataAvailable": {
+   "callconv": "WINAPI",
+   "name": "WinHttpQueryDataAvailable",
+   "retVal": "BOOL",
+   "params": [
+    {
+     "anno": "IN",
+     "type": "HINTERNET",
+     "name": "hRequest"
+    },
+    {
+     "anno": "_out_data_source(NETWORK)",
+     "type": "LPDWORD",
+     "name": "lpdwNumberOfBytesAvailable"
+    }
+   ]
+  },
+  "WinHttpReadData": {
+   "callconv": "WINAPI",
+   "name": "WinHttpReadData",
+   "retVal": "BOOL",
+   "params": [
+    {
+     "anno": "IN",
+     "type": "HINTERNET",
+     "name": "hRequest"
+    },
+    {
+     "anno": "_Out_writes_bytes_to_(dwNumberOfBytesToRead *lpdwNumberOfBytesRead) __out_data_source(NETWORK)",
+     "type": "LPVOID",
+     "name": "lpBuffer"
+    },
+    {
+     "anno": "IN",
+     "type": "DWORD",
+     "name": "dwNumberOfBytesToRead"
+    },
+    {
+     "anno": "OUT",
+     "type": "LPDWORD",
+     "name": "lpdwNumberOfBytesRead"
+    }
+   ]
+  },
+  "WinHttpReceiveResponse": {
+   "callconv": "WINAPI",
+   "name": "WinHttpReceiveResponse",
+   "retVal": "BOOL",
+   "params": [
+    {
+     "anno": "IN",
+     "type": "HINTERNET",
+     "name": "hRequest"
+    },
+    {
+     "anno": "IN",
+     "type": "LPVOID",
+     "name": "lpReserved"
+    }
+   ]
+  },
+  "WinHttpSendRequest": {
+   "callconv": "WINAPI",
+   "name": "WinHttpSendRequest",
+   "retVal": "BOOL",
+   "params": [
+    {
+     "anno": "IN",
+     "type": "HINTERNET",
+     "name": "hRequest"
+    },
+    {
+     "anno": "_In_reads_opt_(dwHeadersLength)",
+     "type": "LPCWSTR",
+     "name": "lpszHeaders"
+    },
+    {
+     "anno": "IN",
+     "type": "DWORD",
+     "name": "dwHeadersLength"
+    },
+    {
+     "anno": "_In_reads_bytes_opt_(dwOptionalLength)",
+     "type": "LPVOID",
+     "name": "lpOptional"
+    },
+    {
+     "anno": "IN",
+     "type": "DWORD",
+     "name": "dwOptionalLength"
+    },
+    {
+     "anno": "IN",
+     "type": "DWORD",
+     "name": "dwTotalLength"
+    },
+    {
+     "anno": "IN",
+     "type": "DWORD_PTR",
+     "name": "dwContext"
+    }
+   ]
   }
  },
  "wininet.dll": {
   "HttpOpenRequestA": {
+   "callconv": "WINAPI",
+   "name": "HttpOpenRequestA",
+   "retVal": "HINTERNET",
    "params": [
     {
      "anno": "_In_",
@@ -3049,10 +2834,12 @@
      "type": "DWORD_PTR",
      "name": "dwContext"
     }
-   ],
-   "retVal": "HINTERNET"
+   ]
   },
   "HttpOpenRequestW": {
+   "callconv": "WINAPI",
+   "name": "HttpOpenRequestW",
+   "retVal": "HINTERNET",
    "params": [
     {
      "anno": "_In_",
@@ -3094,10 +2881,12 @@
      "type": "DWORD_PTR",
      "name": "dwContext"
     }
-   ],
-   "retVal": "HINTERNET"
+   ]
   },
   "HttpSendRequestA": {
+   "callconv": "WINAPI",
+   "name": "HttpSendRequestA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -3124,10 +2913,12 @@
      "type": "DWORD",
      "name": "dwOptionalLength"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "HttpSendRequestW": {
+   "callconv": "WINAPI",
+   "name": "HttpSendRequestW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -3154,10 +2945,12 @@
      "type": "DWORD",
      "name": "dwOptionalLength"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "InternetConnectA": {
+   "callconv": "WINAPI",
+   "name": "InternetConnectA",
+   "retVal": "HINTERNET",
    "params": [
     {
      "anno": "_In_",
@@ -3199,10 +2992,12 @@
      "type": "DWORD_PTR",
      "name": "dwContext"
     }
-   ],
-   "retVal": "HINTERNET"
+   ]
   },
   "InternetConnectW": {
+   "callconv": "WINAPI",
+   "name": "InternetConnectW",
+   "retVal": "HINTERNET",
    "params": [
     {
      "anno": "_In_",
@@ -3244,10 +3039,12 @@
      "type": "DWORD_PTR",
      "name": "dwContext"
     }
-   ],
-   "retVal": "HINTERNET"
+   ]
   },
   "InternetCrackUrlA": {
+   "callconv": "WINAPI",
+   "name": "InternetCrackUrlA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_reads_(dwUrlLength)",
@@ -3269,10 +3066,12 @@
      "type": "LPURL_COMPONENTSA",
      "name": "lpUrlComponents"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "InternetCrackUrlW": {
+   "callconv": "WINAPI",
+   "name": "InternetCrackUrlW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_reads_(dwUrlLength)",
@@ -3294,10 +3093,12 @@
      "type": "LPURL_COMPONENTSW",
      "name": "lpUrlComponents"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "InternetOpenA": {
+   "callconv": "WINAPI",
+   "name": "InternetOpenA",
+   "retVal": "HINTERNET",
    "params": [
     {
      "anno": "_In_opt_",
@@ -3324,10 +3125,12 @@
      "type": "DWORD",
      "name": "dwFlags"
     }
-   ],
-   "retVal": "HINTERNET"
+   ]
   },
   "InternetOpenUrlA": {
+   "callconv": "WINAPI",
+   "name": "InternetOpenUrlA",
+   "retVal": "HINTERNET",
    "params": [
     {
      "anno": "_In_",
@@ -3359,10 +3162,12 @@
      "type": "DWORD_PTR",
      "name": "dwContext"
     }
-   ],
-   "retVal": "HINTERNET"
+   ]
   },
   "InternetOpenUrlW": {
+   "callconv": "WINAPI",
+   "name": "InternetOpenUrlW",
+   "retVal": "HINTERNET",
    "params": [
     {
      "anno": "_In_",
@@ -3394,10 +3199,12 @@
      "type": "DWORD_PTR",
      "name": "dwContext"
     }
-   ],
-   "retVal": "HINTERNET"
+   ]
   },
   "InternetOpenW": {
+   "callconv": "WINAPI",
+   "name": "InternetOpenW",
+   "retVal": "HINTERNET",
    "params": [
     {
      "anno": "_In_opt_",
@@ -3424,10 +3231,12 @@
      "type": "DWORD",
      "name": "dwFlags"
     }
-   ],
-   "retVal": "HINTERNET"
+   ]
   },
   "InternetQueryOptionA": {
+   "callconv": "WINAPI",
+   "name": "InternetQueryOptionA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_opt_",
@@ -3449,10 +3258,12 @@
      "type": "LPDWORD",
      "name": "lpdwBufferLength"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "InternetReadFile": {
+   "callconv": "WINAPI",
+   "name": "InternetReadFile",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -3474,10 +3285,12 @@
      "type": "LPDWORD",
      "name": "lpdwNumberOfBytesRead"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "InternetReadFileExA": {
+   "callconv": "WINAPI",
+   "name": "InternetReadFileExA",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -3499,10 +3312,12 @@
      "type": "DWORD_PTR",
      "name": "dwContext"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "InternetReadFileExW": {
+   "callconv": "WINAPI",
+   "name": "InternetReadFileExW",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -3524,10 +3339,12 @@
      "type": "DWORD_PTR",
      "name": "dwContext"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   },
   "InternetWriteFile": {
+   "callconv": "WINAPI",
+   "name": "InternetWriteFile",
+   "retVal": "BOOL",
    "params": [
     {
      "anno": "_In_",
@@ -3549,8 +3366,7 @@
      "type": "LPDWORD",
      "name": "lpdwNumberOfBytesWritten"
     }
-   ],
-   "retVal": "BOOL"
+   ]
   }
  }
 }
