@@ -28,14 +28,13 @@ The current implementation is targetting Windows OS for the momen, specifically 
 
 ## Features
 
-- Support Windows 7+ x86/x64.
+- Support Windows 7, Windows 8  and Windows 10, both 32-bits and 64-bits platform.
+- Generic Hook Handler to trace any Win32 APIs.
+- Extract all files writen to disk.
 - Invisible user mode hooks.
 - Invisible kernel mode hooks.
-- Generic Hook Handler to trace all Win32 APIs.
 - Track child processes and follows code injection.
-- Extract all files writen to disk.
-- Memory dumps/unpacking.
-- Fix IAT for PE dumps.
+- Includes a generic PE unpacker and import fixer.
 - Resistent to anti-VM detection techniques.
 - User simulater running inside the guest.
 
@@ -44,7 +43,6 @@ The current implementation is targetting Windows OS for the momen, specifically 
 - Driver running in the guest (registry keys, ..)
 - Processes running inside the guest (User simulator)
 - Injected DLL.
-
 
 ## Hooked APIs
 

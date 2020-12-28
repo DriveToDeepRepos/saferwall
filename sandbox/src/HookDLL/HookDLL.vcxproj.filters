@@ -70,5 +70,8 @@
     <MASM Include="x86.asm">
       <Filter>Source Files</Filter>
     </MASM>
+    <MASM Include="x64.asm">
+      <Filter>Source Files</Filter>
+    </MASM>
   </ItemGroup>
 </Project>

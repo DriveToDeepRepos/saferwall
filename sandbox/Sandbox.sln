@@ -17,9 +17,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HookDLL", "src\HookDLL\Hook
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Driver", "src\Driver\Driver.vcxproj", "{10FD24EF-BFEE-43DE-AD9A-BEAC5824E102}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Loader", "src\Loader\Loader.vcxproj", "{AB786C3B-C52A-4E52-A0E2-4A39CE579A5A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Agent", "src\Loader\Loader.vcxproj", "{AB786C3B-C52A-4E52-A0E2-4A39CE579A5A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "HookTest", "src\HookTest\HookTest.vcxproj", "{7205E4BF-08C0-431E-B2B1-3749F2ED277B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C974828F-CC09-4BA6-B277-EF15C4296200} = {C974828F-CC09-4BA6-B277-EF15C4296200}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

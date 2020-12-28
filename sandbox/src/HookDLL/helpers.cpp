@@ -63,7 +63,7 @@ jsoneq(const char *json, jsmntok_t *tok, const char *s)
 }
 
 BOOL
-SfwUtilGetFileSize(HANDLE hFile, LPDWORD lpFileSize)
+SfwUtilGetFileSize(HANDLE hFile, PDWORD_PTR lpFileSize)
 {
     NTSTATUS Status;
     IO_STATUS_BLOCK IoStatus;
@@ -127,14 +127,15 @@ SfwUtilReadFile(CONST WCHAR *wszFileName, DWORD *lpNumberOfBytesRead)
     //
     // Get File Size.
     //
-    DWORD Length = 0;
+    DWORD_PTR Length = 0;
     SfwUtilGetFileSize(FileHandle, &Length);
 
     //
     // Read the file.
     //
     LPVOID lpBuffer = NULL;
-    Status = NtAllocateVirtualMemory(NtCurrentProcess(), &lpBuffer, 0, &Length, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+    Status =
+        NtAllocateVirtualMemory(NtCurrentProcess(), &lpBuffer, 0, &Length, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
     if (!NT_SUCCESS(Status))
     {
         return NULL;

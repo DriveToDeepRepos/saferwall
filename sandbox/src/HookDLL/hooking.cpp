@@ -31,13 +31,14 @@ pfn_wcscmp _wcscmp = nullptr;
 DWORD dwTlsIndex;
 BOOL gInsideHook = FALSE;
 PHOOK_CONTEXT pgHookContext = nullptr;
-CRITICAL_SECTION gInsideHookLock, gHookDllLock;
+CRITICAL_SECTION gHookDllLock;
 
 
 extern "C" {
 
 DWORD __stdcall HookHandler(VOID);
 DWORD_PTR __stdcall AsmCall(PVOID, UCHAR, DWORD_PTR *);
+DWORD_PTR __stdcall AsmCall_x64(PCONTEXT, PVOID);
 VOID __stdcall AsmReturn(DWORD_PTR, DWORD_PTR);
 }
 
@@ -322,7 +323,6 @@ ProcessAttach()
     // Used for capturing stack trace and IsInsideHook.
     //
 
-    InitializeCriticalSection(&gInsideHookLock);
     InitializeCriticalSection(&gHookDllLock);
 
     //
@@ -489,7 +489,11 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCON
     BYTE byte2 = *(BYTE *)(RetAddr - 5);
     if (byte1 == 0xff && byte2 == 0x15)
     {
+#ifdef _WIN64
+        Target = *(DWORD_PTR *)(RetAddr + *(DWORD *)(RetAddr - 4));
+#else
         Target = **((DWORD_PTR **)(RetAddr - 4));
+#endif
         pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
     }
 
@@ -503,13 +507,15 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCON
     // CALL ESI
     else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd6)
     {
-        Target = pContext->Esi;
+        //Target = pContext->Esi;
+        //Target = pContext->Rsi;
         pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
     }
     // call EDI
     else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd7)
     {
-        Target = pContext->Edi;
+        //Target = pContext->Edi;
+        //Target = pContext->Rdi;
         pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
     }
     else
@@ -519,10 +525,15 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCON
 
     if (pAPI == NULL)
     {
-        // JMP to a JMP.
+        // JMP to a JMP (seen often in debug mode).
+#ifdef _WIN64
+        Target = *(DWORD_PTR *)(Target + 6 + *(DWORD *)(Target + 2));
+#else
         Target = **((DWORD_PTR **)(Target + 2));
+        Target
+#endif
+
         pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
-        // pAPI is still NULL, warn !
         if (!pAPI)
             LogMessage(L"pAPI is NULL 0x%x\n", RetAddr);
     }
@@ -578,8 +589,78 @@ extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI(PWCHAR szLog, PAPI
     return szLog;
 }
 
+extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI_x64(PWCHAR szLog, PAPI pAPI, DWORD_PTR *BasePointer, PCONTEXT pContext)
+{
+    INT len = 0;
+    PWCHAR szBuff = (PWCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
+    BOOL bFound = TRUE;
+    DWORD_PTR Param;
+
+    for (int i = 0; i < pAPI->cParams; i++)
+    {
+
+#ifdef _WIN64
+        switch (i)
+        {
+        case 0:
+            Param = pContext->Rcx;
+            break;
+        case 1:
+            Param = pContext->Rdx;
+            break;
+        case 2:
+            Param = pContext->R8;
+            break;
+        case 3:
+            Param = pContext->R9;
+            break;
+        }
+#else
+	Param = *(DWORD_PTR *)(BasePointer + i);
+#endif
+
+        switch (pAPI->Parameters[i].Annotation)
+        {
+        case PARAM_IN:
+        case PARAM_IN_OUT:
+            switch (pAPI->Parameters[i].Type)
+            {
+            case PARAM_IMM:
+                _snwprintf(szBuff, MAX_PATH, L"%s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
+                break;
+            case PARAM_PTR_IMM:
+                _snwprintf(szBuff, sizeof(szBuff), L"%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, *(DWORD_PTR *)Param);
+                break;
+            case PARAM_ASCII_STR:
+                _snwprintf(szBuff, MAX_PATH, L"%s:%s, ", (PCHAR)pAPI->Parameters[i].Name, (PCHAR)Param);
+                break;
+            case PARAM_WIDE_STR:
+                _snwprintf(szBuff, MAX_PATH, L"%s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+                break;
+            case PARAM_PTR_STRUCT:
+                _snwprintf(szBuff, MAX_PATH, L"%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, Param);
+                break;
+            default:
+                LogMessage(L"Unknown");
+                bFound = FALSE;
+                break;
+            }
+
+            if (bFound)
+            {
+                _wcsncat(szLog, szBuff, _wcslen(szBuff));
+                RtlZeroMemory(szBuff, _wcslen(szBuff));
+            }
+        }
+    }
+
+    RtlFreeHeap(RtlProcessHeap(), 0, szBuff);
+    return szLog;
+}
+
 // Log Return Value and __Out__ Buffers.
-extern "C" __declspec(noinline) PWCHAR WINAPI
+EXTERN_C
+__declspec(noinline) PWCHAR WINAPI
     PostHookTraceAPI(PAPI pAPI, DWORD_PTR *BasePointer, PWCHAR szLog, DWORD_PTR RetValue)
 {
     INT len = 0;
@@ -646,13 +727,22 @@ extern "C" __declspec(noinline) PWCHAR WINAPI
     return szLog;
 }
 
-extern "C" VOID WINAPI
+#ifndef _WIN64
+EXTERN_C VOID WINAPI
 GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
 {
+
+	//
+	// Capture the execuion context.
+	//
+
     CONTEXT Context = {0};
     RtlCaptureContext(&Context);
 
+	//
     // Get the target API.
+	//
+
     PAPI pAPI = GetTargetAPI(ReturnAddress, &Context);
     if (!pAPI)
     {
@@ -664,7 +754,6 @@ GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
     if (SfwIsCalledFromSystemMemory(ReturnAddress) || SfwIsInsideHook())
     {
         // Call the Real API.
-        // printf("Skipping call to %s\n", pAPI->Name);
         DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
         AsmReturn(pAPI->cParams, RetValue);
         return;
@@ -681,6 +770,55 @@ GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
 
     // Finally perform the call.
     DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
+
+    // Log Post Hooking.
+    PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
+
+    LogMessage(L"%ws\n", szLog);
+    RtlFreeHeap(RtlProcessHeap(), 0, szLog);
+
+    // Releasing our hook guard.
+    SfwReleaseHookGuard();
+
+    // Set eax to RetValue, and ecx to cParams so we know how to adjust the stack.
+    AsmReturn(pAPI->cParams, RetValue);
+}
+#endif
+
+EXTERN_C
+VOID WINAPI
+GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, CONTEXT Context)
+{
+    //
+    // Get the target API.
+    //
+ 
+    PAPI pAPI = GetTargetAPI(ReturnAddress, &Context);
+    if (!pAPI)
+    {
+        LogMessage(L"Could not find API!\n");
+    }
+
+    // Are we called from inside a our own hook handler.
+    if (SfwIsCalledFromSystemMemory(ReturnAddress) || SfwIsInsideHook())
+    {
+        // Call the Real API.
+        DWORD_PTR RetValue = AsmCall_x64(&Context, pAPI->RealTarget);
+        AsmReturn(pAPI->cParams, RetValue);
+        return;
+    }
+
+    // Allocate space to log the API.
+    PWCHAR szLog = (PWCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, 1024);
+
+    // Append the API name.
+    _snwprintf(szLog, MAX_PATH, L"%ws(", pAPI->Name);
+
+    // Pre Hooking.
+    PreHookTraceAPI_x64(szLog, pAPI, &CallerStackFrame, &Context);
+
+    // Finally perform the call.
+    DWORD_PTR RetValue = AsmCall_x64(&Context, pAPI->RealTarget);
 
     // Log Post Hooking.
     PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);

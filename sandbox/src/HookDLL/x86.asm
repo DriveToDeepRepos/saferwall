@@ -15,6 +15,7 @@ EXTERN GenericHookHandler@8: PROC
 ;
 .CODE
 
+
 AsmReturn PROC cParams, ReturnValue
     mov ecx, cParams
     mov eax, ReturnValue
@@ -48,7 +49,7 @@ AsmCall endp
 HookHandler proc
 
    call GenericHookHandler@8
-   sub esp, 8
+   sub esp, 8                       ; Balance the stack, 4 byte due to the call API + 4 byte call GenericHookHandler
 
    mov edx, dword ptr [esp]
    imul ecx, 4
