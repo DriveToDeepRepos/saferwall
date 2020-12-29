@@ -16,7 +16,6 @@ EXTERN RtlRestoreContext: PROC
 
 ; Capture the execution context.
 PUSH_VOLATILE MACRO
-    pushfq  
     push rbx
     push rbp
     push rdi
@@ -37,7 +36,6 @@ POP_VOLATILE MACRO
     pop rdi
     pop rbp
     pop rbx
-    popfq  
 ENDM
 
 
@@ -47,37 +45,55 @@ ENDM
 ;
 .CODE
 
-AsmReturn PROC cParams, ReturnValue
-    mov ecx, cParams
-    mov eax, ReturnValue
+AsmReturn_x64 PROC
+    ; rcx =  cParams
+    ; rdx = ReturnValue
+    ; r8 = original return addr
+
+    mov rax, rdx
     ret
-AsmReturn endp
+AsmReturn_x64 endp
 
 AsmCall_x64 PROC
     ; rcx = pContext
     ; rdx = target
+    ; r8 = cParams
+    ; r9 = CallerStackFrame
 
-    mov r14, offset RETURN_LABEL
-    mov qword ptr [rcx+0D8h], r14       ; return addr. (r12)
-    mov qword ptr [rcx+0E0h], rdx       ; target (r13)
-    mov qword ptr [rcx+0F0h], rsp       ; current stack (r15)
-    mov r14, [rsp]
-    mov qword ptr [rcx+0E8h], r14       ; caller address (r14)
+    PUSH_VOLATILE
 
+    mov r13, rdx    ; target
+    mov r14, r8     ; count params
 
-    sub rsp, 8                          ; allocate space for PEXCEPTION_RECORD
-    mov rdx, rsp                        ; set up the second argument to RtlRestoreContext
-    mov r14, offset CONTINUE_LABEL      ; get the addr of the next block.
-    mov qword ptr [rcx+0F8h], r14       ; Context.RIP = @CONTINUE_LABEL
-    call RtlRestoreContext              ; restore the old context.
+    ; Push the arguments on the stack.
+    sub r8, 2
+L1:
+    sub r8,1   
+    cmp r8,0  
+    jl @F
+    mov rax, qword ptr [r9+r8*4]
+    push rax
+    jmp L1
 
-CONTINUE_LABEL:
-    mov [rsp], r12
-    jmp r13
+@@:
+    ; Restore registers used in calling Win32 APIs.
+    mov rcx,  qword ptr [rcx+80h]
+    mov rdx,  qword ptr [rcx+88h]
+    mov r8,  qword ptr [rcx+0B8h]
+    mov r9,  qword ptr [rcx+0C0h]
+    call r13
 
-RETURN_LABEL:
-    mov rsp, r15
-    mov [rsp], r14
+    ; Pop the arguments from the stack.
+    sub r14, 2
+ L2:
+    sub r14,1   
+    cmp r14,0  
+    jl @F
+    pop rcx
+    jmp L2
+@@:
+    POP_VOLATILE
+
     ret
 AsmCall_x64 endp
 
@@ -102,9 +118,9 @@ HookHandler PROC
    ; the call to RtlCaptureContext()
 
    ; Restore Context.Rdi
-    lea rdi, [rsp+ 4D0h]
-    mov rdi, [rdi]
-    mov qword ptr [ rsp + 0B0h ], rdi
+    lea rax, [rsp+ 4D0h]
+    mov rax, [rax]
+    mov qword ptr [ rsp + 0B0h ], rax
 
     ; Restore Context.Rax
     lea rax, [ rsp + 4D0h + 8 ]
@@ -112,28 +128,29 @@ HookHandler PROC
     mov qword ptr [rsp + 78h], rax
 
     ; Restore Context.Rcx
-    lea rcx, [ rsp + 4D0h + 16 ]
-    mov rcx, [rcx]
-    mov qword ptr [rsp + 80h], rcx
+    lea rax, [ rsp + 4D0h + 16 ]
+    mov rax, [rax]
+    mov qword ptr [rsp + 80h], rax
 
-    ; Restore Context.Rsp
-    lea r9, [ rsp + 4d0h + 24 ] 
-    mov qword ptr [ rsp + 98h ], r9
-
+   ; Pass GenericHookHandler_x64 3 arguments.
    mov rcx, [ rsp + 4D0h + 24 ]
    lea rdx, [ rsp + 4D0h + 32 ]
    mov r8, rsp
    call GenericHookHandler_x64
 
-   sub rsp, 16              
+   ; Balance the stack, 3 arguments + sizeof(CONTEXT)
+   add rsp, 24 
+   add rsp, 4d0h
 
-   mov rdx, qword ptr [ rsp ]
-   imul rdx, 8
+   ; Pop the args.
+   cmp rcx, 2
+   jle @F
+   imul rcx, 8
    add rsp, rcx
-   mov qword ptr [rsp],  rdx
+@@:
+   mov qword ptr [rsp],  r8 ; return addr
    ret
 
 HookHandler ENDP
-
 
 end

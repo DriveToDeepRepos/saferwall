@@ -38,8 +38,9 @@ extern "C" {
 
 DWORD __stdcall HookHandler(VOID);
 DWORD_PTR __stdcall AsmCall(PVOID, UCHAR, DWORD_PTR *);
-DWORD_PTR __stdcall AsmCall_x64(PCONTEXT, PVOID);
+DWORD_PTR __stdcall AsmCall_x64(PCONTEXT, PVOID, UCHAR, DWORD_PTR *);
 VOID __stdcall AsmReturn(DWORD_PTR, DWORD_PTR);
+VOID __stdcall AsmReturn_x64(DWORD_PTR, DWORD_PTR, DWORD_PTR);
 }
 
 //
@@ -787,24 +788,32 @@ GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
 
 EXTERN_C
 VOID WINAPI
-GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, CONTEXT Context)
+GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, CONTEXT ContextRecord)
 {
+	// 
+	// Make a copy of the context structure.
+	//
+
+    PCONTEXT pContext = (PCONTEXT)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(CONTEXT));
+    RtlCopyMemory(pContext, &ContextRecord, sizeof(CONTEXT));
+
     //
     // Get the target API.
     //
  
-    PAPI pAPI = GetTargetAPI(ReturnAddress, &Context);
+    PAPI pAPI = GetTargetAPI(ReturnAddress, pContext);
     if (!pAPI)
     {
         LogMessage(L"Could not find API!\n");
+        return;
     }
 
     // Are we called from inside a our own hook handler.
     if (SfwIsCalledFromSystemMemory(ReturnAddress) || SfwIsInsideHook())
     {
         // Call the Real API.
-        DWORD_PTR RetValue = AsmCall_x64(&Context, pAPI->RealTarget);
-        AsmReturn(pAPI->cParams, RetValue);
+        DWORD_PTR RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
+        AsmReturn_x64(pAPI->cParams, RetValue, ReturnAddress);
         return;
     }
 
@@ -815,10 +824,10 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, CONT
     _snwprintf(szLog, MAX_PATH, L"%ws(", pAPI->Name);
 
     // Pre Hooking.
-    PreHookTraceAPI_x64(szLog, pAPI, &CallerStackFrame, &Context);
+    PreHookTraceAPI_x64(szLog, pAPI, &CallerStackFrame, pContext);
 
     // Finally perform the call.
-    DWORD_PTR RetValue = AsmCall_x64(&Context, pAPI->RealTarget);
+    DWORD_PTR RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
 
     // Log Post Hooking.
     PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
@@ -830,7 +839,7 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, CONT
     SfwReleaseHookGuard();
 
     // Set eax to RetValue, and ecx to cParams so we know how to adjust the stack.
-    AsmReturn(pAPI->cParams, RetValue);
+    AsmReturn_x64(pAPI->cParams, RetValue, ReturnAddress);
 }
 
 
