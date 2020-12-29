@@ -38,9 +38,9 @@ extern "C" {
 
 DWORD __stdcall HookHandler(VOID);
 DWORD_PTR __stdcall AsmCall(PVOID, UCHAR, DWORD_PTR *);
-DWORD_PTR __stdcall AsmCall_x64(PCONTEXT, PVOID, UCHAR, DWORD_PTR *);
+DWORD_PTR __stdcall AsmCall_x64(PCONTEXT, PVOID, UCHAR, DWORD_PTR);
 VOID __stdcall AsmReturn(DWORD_PTR, DWORD_PTR);
-VOID __stdcall AsmReturn_x64(DWORD_PTR, DWORD_PTR, DWORD_PTR);
+VOID __stdcall AsmReturn_x64(DWORD_PTR, DWORD_PTR);
 }
 
 //
@@ -429,7 +429,8 @@ HookNtAPIs()
 
 extern "C" __declspec(noinline) BOOL WINAPI SfwIsCalledFromSystemMemory(DWORD_PTR ReturnAddress)
 {
-    if (ReturnAddress >= pgHookContext->ModuleBase && ReturnAddress <= pgHookContext->ModuleBase + pgHookContext->SizeOfImage)
+    if (ReturnAddress >= pgHookContext->ModuleBase &&
+		ReturnAddress <= pgHookContext->ModuleBase + pgHookContext->SizeOfImage)
     {
         return FALSE;
     }
@@ -508,15 +509,17 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCON
     // CALL ESI
     else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd6)
     {
-        //Target = pContext->Esi;
-        //Target = pContext->Rsi;
+#ifndef _WIN64
+        Target = pContext->Rsi;
+#endif
         pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
     }
     // call EDI
     else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd7)
     {
-        //Target = pContext->Edi;
-        //Target = pContext->Rdi;
+#ifndef _WIN64
+        Target = pContext->Edi;
+#endif
         pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
     }
     else
@@ -788,15 +791,8 @@ GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
 
 EXTERN_C
 VOID WINAPI
-GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, CONTEXT ContextRecord)
+GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCONTEXT pContext)
 {
-	// 
-	// Make a copy of the context structure.
-	//
-
-    PCONTEXT pContext = (PCONTEXT)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(CONTEXT));
-    RtlCopyMemory(pContext, &ContextRecord, sizeof(CONTEXT));
-
     //
     // Get the target API.
     //
@@ -812,8 +808,9 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, CONT
     if (SfwIsCalledFromSystemMemory(ReturnAddress) || SfwIsInsideHook())
     {
         // Call the Real API.
-        DWORD_PTR RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
-        AsmReturn_x64(pAPI->cParams, RetValue, ReturnAddress);
+        DWORD_PTR RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, CallerStackFrame);
+        RtlFreeHeap(RtlProcessHeap(), 0, pContext);
+        AsmReturn_x64(RetValue, ReturnAddress);
         return;
     }
 
@@ -827,19 +824,20 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, CONT
     PreHookTraceAPI_x64(szLog, pAPI, &CallerStackFrame, pContext);
 
     // Finally perform the call.
-    DWORD_PTR RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
+    DWORD_PTR RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, CallerStackFrame);
 
     // Log Post Hooking.
     PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
 
     LogMessage(L"%ws\n", szLog);
     RtlFreeHeap(RtlProcessHeap(), 0, szLog);
+    RtlFreeHeap(RtlProcessHeap(), 0, pContext);
 
     // Releasing our hook guard.
     SfwReleaseHookGuard();
 
     // Set eax to RetValue, and ecx to cParams so we know how to adjust the stack.
-    AsmReturn_x64(pAPI->cParams, RetValue, ReturnAddress);
+    AsmReturn_x64(RetValue, ReturnAddress);
 }
 
 
@@ -848,7 +846,7 @@ BOOL SfwHookLoadedModules()
     NTSTATUS Status;
     const unsigned initial_size = 256;
     pgHookContext->hashmapA =
-        (struct hashmap_s *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(struct hashmap_s *));
+        (struct hashmap_s *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(struct hashmap_s));
 	if (0 != hashmap_create(initial_size, pgHookContext->hashmapA))
 	{
         LogMessage(L"hashmap_create failed\n");

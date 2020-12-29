@@ -56,7 +56,7 @@ VOID
 GetRandomFilePath(PWSTR szPathOut);
 DWORD
 PrintError(const char *wszProcedureName);
-VOID
+BOOL
 TestFileHooks();
 VOID
 TestLibLoadHooks();

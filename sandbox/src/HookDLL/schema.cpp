@@ -45,20 +45,20 @@ SfwSchemaLoadAPIDef()
     if (r < 1 || t[0].type != JSMN_OBJECT)
     {
         LogMessage(L"object expected");
-        return 1;
+        return 0;
     }
 
     const unsigned initial_size = 256;
 
     pgHookContext->hashmap =
-        (struct hashmap_s *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(struct hashmap_s *));
+        (struct hashmap_s *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(struct hashmap_s));
     if (0 != hashmap_create(initial_size, pgHookContext->hashmap))
     {
         LogMessage(L"hashmap_create() failed\n");
     }
 
     pgHookContext->hashmapM =
-        (struct hashmap_s *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(struct hashmap_s *));
+        (struct hashmap_s *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(struct hashmap_s));
     if (0 != hashmap_create(initial_size, pgHookContext->hashmapM))
     {
         LogMessage(L"hashmap_create failed\n");

@@ -9,7 +9,7 @@ TestWinhttpHooks()
 {
     DWORD dwSize = 0;
     DWORD dwDownloaded = 0;
-    LPSTR pszOutBuffer;
+    LPSTR pszOutBuffer = NULL;
     BOOL bResults = FALSE;
     HINTERNET hSession = NULL, hConnect = NULL, hRequest = NULL;
 

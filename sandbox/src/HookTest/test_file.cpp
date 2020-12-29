@@ -1,6 +1,6 @@
 #include "header.h"
 
-VOID
+BOOL
 TestFileHooks()
 {
     WCHAR szFilePath[MAX_PATH] = L"";
@@ -14,7 +14,11 @@ TestFileHooks()
 
     wprintf(L"[+] Calling CreateDirectoryW\n");
     GetRandomDir(szFilePath);
-    CreateDirectory(szFilePath, NULL);
+    bResult = CreateDirectory(szFilePath, NULL);
+    if (!bResult)
+    {
+        PrintError("CreateDirectory");
+    }
 
     wprintf(L"[+] Calling CreateDirectoryExW\n");
     GetRandomDir(szFilePath);
@@ -30,6 +34,7 @@ TestFileHooks()
     if (hFile == INVALID_HANDLE_VALUE)
     {
 		PrintError("CreateFileW");
+        return FALSE;
     }
 
     wprintf(L"[+] Calling WriteFile\n");
