@@ -10,7 +10,6 @@ OpenRegistryKey(PWCHAR pSubKey)
     HKEY hkResult;
 
     dwRet = RegOpenKey(HKEY_LOCAL_MACHINE, pSubKey, &hkResult);
-
     if (dwRet != ERROR_SUCCESS)
     {
 		PrintError("RegOpenKey");

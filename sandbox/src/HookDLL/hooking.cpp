@@ -530,12 +530,22 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCON
     if (pAPI == NULL)
     {
         // JMP to a JMP (seen often in debug mode).
+        // FF E0
+        BYTE byte1 = *(BYTE *)(Target);
+        BYTE byte2 = *(BYTE *)(Target+1);
+        if (byte1 == 0xff && byte2 == 0xe0)
+        {
+            Target = pContext->Rax;
+        }
+        else
+        {
 #ifdef _WIN64
-        Target = *(DWORD_PTR *)(Target + 6 + *(DWORD *)(Target + 2));
+            Target = *(DWORD_PTR *)(Target + 6 + *(DWORD *)(Target + 2));
 #else
-        Target = **((DWORD_PTR **)(Target + 2));
-        Target
+            Target = **((DWORD_PTR **)(Target + 2));
+            Target
 #endif
+        }
 
         pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
         if (!pAPI)

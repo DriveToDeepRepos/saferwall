@@ -82,13 +82,29 @@ AsmCall_x64 PROC
 
     PUSH_NON_VOLATILE
 
+    mov r12, rsp    ; stack pointer
     mov r13, rdx    ; target
     mov r14, r8     ; count params
 
-    ; Push the arguments on the stack.
-L1:
+    ; xmm ops will fails if stack is not 16 bits aligned.
+    mov r15, rsp
+    and r15, 15 
+    sub rsp, r15 
+
+    ; at this stage, the stack is 16-bytes aligned,
+    ; however as we will be pushing extra params to the stack
+    ; we need to adjust if necessery.
     cmp r8,4
-    jle L2   
+    jle L2 
+    shr r14, 1  ; if number of params is not pair, we sub 8 bytes more.
+    jnc L1       ; if divisable by 2, jump to L1.
+    sub rsp, 8  ; align the stack
+    mov r14, r8
+
+    ; Places parametes on the right location on the stack.
+L1:  
+    cmp r8,4
+    jle L2  
     sub r8, 1
     mov rax, qword ptr [r9+r8*8]
     push rax
@@ -98,21 +114,14 @@ L2:
     ; Restore registers used in calling Win32 APIs.
     mov r8,  qword ptr [rcx+0B8h]
     mov r9,  qword ptr [rcx+0C0h]
-    mov rdx,  qword ptr [rcx+88h]
-    mov rcx,  qword ptr [rcx+80h]
+    mov rdx, qword ptr [rcx+88h]
+    mov rcx, qword ptr [rcx+80h]
     sub rsp, SHADOW_SPACE
     call r13
-    add rsp, SHADOW_SPACE
+    
+    ; restore rsp.
+    mov rsp, r12
 
-    ; Pop the arguments from the stack.
-L3:
-    cmp r14, 4
-    jle @F
-    add rsp, 8
-    sub r14, 1
-    jmp L3
-
-@@:
     POP_NON_VOLATILE
     ret
 AsmCall_x64 endp
