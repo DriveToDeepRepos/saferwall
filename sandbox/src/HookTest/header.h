@@ -43,6 +43,7 @@
 #define TEST_SYNC_HOOKS TRUE
 #define TEST_WINSVC_HOOKS TRUE
 #define TEST_WINCRYPT_HOOKS TRUE
+#define TEST_HEAP_HOOKS TRUE
 
 //
 // Prototypes
@@ -76,3 +77,5 @@ VOID
 TestWinCryptHooks();
 VOID
 TestProcessThreadHooks();
+BOOL
+TestHeapHooks();

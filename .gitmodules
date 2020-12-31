@@ -8,3 +8,6 @@
 	path = sandbox/include/phnt
 	url = https://github.com/processhacker/phnt.git
 
+[submodule "sandbox/lib/zydis"]
+	path = sandbox/lib/zydis
+	url = https://github.com/zyantific/zydis.git

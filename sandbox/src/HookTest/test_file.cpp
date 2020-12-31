@@ -46,7 +46,7 @@ TestFileHooks()
 
     wprintf(L"[+] Calling CloseHandle\n");
     CloseHandle(hFile);
-
+   
     wprintf(L"[+] Calling MoveFileW\n");
     GetRandomFilePath(szDestFilePath);
     bResult = MoveFile(szFilePath, szDestFilePath);
@@ -61,4 +61,6 @@ TestFileHooks()
     {
 		PrintError("DeleteFile");
     }
+    
+	return TRUE;
 }

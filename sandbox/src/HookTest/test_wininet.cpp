@@ -98,4 +98,6 @@ TestWinInetHooks()
     InternetCloseHandle(hHttpFile);
     InternetCloseHandle(hConnect);
     InternetCloseHandle(hSession);
+
+	return TRUE;
 }

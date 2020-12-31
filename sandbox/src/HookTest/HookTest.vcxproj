@@ -164,6 +164,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="test_heap.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="test_file.cpp" />
     <ClCompile Include="test_libload.cpp" />

@@ -54,6 +54,9 @@
     <ClCompile Include="test_wininet.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="test_heap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="header.h">
