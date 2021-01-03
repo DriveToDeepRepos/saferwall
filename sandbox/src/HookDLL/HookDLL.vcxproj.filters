@@ -65,9 +65,6 @@
     <ClCompile Include="jsmn.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="disasm.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <MASM Include="x86.asm">

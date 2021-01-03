@@ -67,6 +67,7 @@ ENDM
 .CODE
 
 SHADOW_SPACE                        =  20h
+CONTEXT_SIZE = 10h
 
 AsmReturn_x64 PROC
     ; rcx = ReturnValue
@@ -130,80 +131,37 @@ AsmCall_x64 endp
    
 
 HookHandler PROC
- 
-    ; non volatile registers used in this routine.
-    push r12
-    push rbx
 
-    ; RtlAllocateHeap can mess up with volatile registers
-    ; even though they are `volatile`, we need to keep
-    ; a copy in case someone tried to call the API with call rax
-    ; later, to get the target API we need RAX.
-    PUSH_VOLATILE
+   push rcx
+   push r12
 
-    ; RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(CONTEXT))
-    call NtCurrentTeb 
-    mov rax, qword ptr [ rax + 60h]
-    mov r8d, 4D0h
-    mov edx, 8
-    mov rcx, qword ptr [rax + 30h]
-    sub esp, SHADOW_SPACE
-    call TrueRtlAllocateHeap
-    add esp, SHADOW_SPACE
-    mov r12, rax  ; r12 points to the pContext record.
+    ; fxsave will fails if stack is not 16 bytes aligned.
+    mov r12, rsp
+    and r12, 15 
+    sub rsp, r12
 
-   ; RtlCaptureContext(&Context)
-   lea rcx, [rax]
+   ; Call RtlCaptureContext
+   sub rsp, 4d0h
+   lea rcx, [rsp]
    call RtlCaptureContext
 
-   ; Restore Context.r11
-    lea rbx, [rsp]
-    mov rbx, [rbx]
-    mov qword ptr [ r12 + 0D0h ], rbx
-
-    ; Restore Context.r10
-    lea rbx, [ rsp + 8 ]
-    mov rbx, [rbx]
-    mov qword ptr [ r12 + 0C8h], rbx
-
-    ; Restore Context.r9
-    lea rbx, [ rsp + 16 ]
-    mov rbx, [rbx]
-    mov qword ptr [ r12 + 0C0h], rbx
-
-    ; Restore Context.r8
-    lea rbx, [ rsp + 24 ]
-    mov rbx, [rbx]
-    mov qword ptr [ r12 + 0B8h], rbx
-
-   ; Restore Context.rdx
-    lea rbx, [ rsp + 32 ]
-    mov rbx, [rbx]
-    mov qword ptr [ r12 + 88h], rbx
-
-   ; Restore Context.rcx
-    lea rbx, [ rsp + 40 ]
-    mov rbx, [rbx]
-    mov qword ptr [r12 + 80h], rbx
-
-   ; Restore Context.rax
-    lea rbx, [ rsp + 48 ]
-    mov rbx, [rbx]
-    mov qword ptr [r12 + 78h], rbx
+   ; Restore Context.RCX
+    lea rcx, [ rsp + 4D0h + 8 ]
+    mov rcx, [rcx]
+    mov qword ptr [rsp  + 80h], rcx
 
    ; Call GenericHookHandler_x64
-   ; (DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCONTEXT pContext, DWORD_PTR RealTarget);
-   mov rcx, [ rsp + 48 + 32]
-   lea rdx, [ rsp + 48 + 40 ]
-   mov r8, r12
-   mov r9, [ rsp + 48 + 24]
+   mov rcx, qword ptr [ rsp + 04D0h + 24]    ; ReturnAddress
+   lea rdx, [ rsp + 4D0h + 32 ]   ; CallerStackFrame
+   mov r8, rsp                     ; pContext
+   mov r9, qword ptr [ rsp + 4D0h + 16]     ; RealTarget
    call GenericHookHandler_x64
 
    ; Balance the stack.
-   add rsp, 56  ; size of all volatile registers
-   pop rbx
+   add rsp, 4d0h    ; size of CONTEXT structure
+   add rsp, r12     ; alignement
    pop r12
-   add rsp, 8 ; target API push
+   add rsp, 16      ; target API push + rcx
 
    mov qword ptr [rsp],  rdx ; return addr
    ret

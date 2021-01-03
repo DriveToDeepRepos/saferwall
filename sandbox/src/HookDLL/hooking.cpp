@@ -62,6 +62,27 @@ REGHANDLE ProviderHandle;
 #define DETACH(x) DetDetach(&(PVOID &)True##x, Hook##x, #x)
 
 
+bool
+IsBadPtr(PVOID pPointer)
+{
+    MEMORY_BASIC_INFORMATION mbi = {0};
+
+    if (VirtualQuery(pPointer, &mbi, sizeof(mbi)))
+    {
+        DWORD mask =
+            (PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE |
+             PAGE_EXECUTE_WRITECOPY);
+
+        bool ret = !(mbi.Protect & mask);
+
+        if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS))
+            ret = true;
+
+        return ret;
+    }
+
+    return true;
+}
 extern "C" __declspec(noinline) BOOL WINAPI SfwIsInsideHook()
 /*++
 
@@ -503,7 +524,7 @@ extern "C" __declspec(noinline) BOOL WINAPI SfwIsCalledFromSystemMemory(DWORD_PT
     return bFound;
 }
 
-extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCONTEXT pContext, DWORD_PTR Target)
+extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR Target)
 {
     PAPI pAPI = NULL;
     
@@ -631,7 +652,7 @@ extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI_x64(PWCHAR szLog, 
 // Log Return Value and __Out__ Buffers.
 EXTERN_C
 __declspec(noinline) PWCHAR WINAPI
-    PostHookTraceAPI(PAPI pAPI, DWORD_PTR *BasePointer, PWCHAR szLog, DWORD_PTR RetValue)
+    PostHookTraceAPI(PAPI pAPI, DWORD_PTR BasePointer, PWCHAR szLog, DWORD_PTR RetValue)
 {
     INT len = 0;
     PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
@@ -639,7 +660,7 @@ __declspec(noinline) PWCHAR WINAPI
 
     for (int i = 0; i < pAPI->cParams; i++)
     {
-        DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + i);
+        DWORD_PTR Param =  *(DWORD_PTR *)(BasePointer + 8*i);
         switch (pAPI->Parameters[i].Annotation)
         {
         case PARAM_OUT:
@@ -651,7 +672,7 @@ __declspec(noinline) PWCHAR WINAPI
                 bFound = TRUE;
                 break;
             case PARAM_PTR_IMM:
-                if (Param != NULL)
+                if (!IsBadPtr((intptr_t *)Param))
                     Param = *(DWORD_PTR *)Param;
                 _snwprintf(szBuff, MAX_PATH, L"out: %s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
                 bFound = TRUE;
@@ -703,21 +724,13 @@ GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
 {
 
 	//
-	// Capture the execuion context.
-	//
-
-    CONTEXT Context = {0};
-    RtlCaptureContext(&Context);
-
-	//
     // Get the target API.
 	//
 
-    PAPI pAPI = GetTargetAPI(ReturnAddress, &Context);
+    PAPI pAPI = GetTargetAPI(ReturnAddress);
     if (!pAPI)
     {
         LogMessage(L"Could not find API!\n");
-        GetTargetAPI(ReturnAddress, &Context);
     }
 
     // Are we called from inside a our own hook handler.
@@ -742,7 +755,7 @@ GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
     DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
 
     // Log Post Hooking.
-    PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
+    PostHookTraceAPI(pAPI, CallerStackFrame, szLog, RetValue);
 
     LogMessage(L"%ws\n", szLog);
     TrueRtlFreeHeap(RtlProcessHeap(), 0, szLog);
@@ -764,9 +777,8 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
     //
     // Get the target API.
     //
- 
-    PAPI pAPI = GetTargetAPI(ReturnAddress, pContext, RealTarget);
-    if (!pAPI)
+    PAPI pAPI = GetTargetAPI(RealTarget);
+	if (!pAPI)
     {
         LogMessage(L"Could not find API!\n");
         return;
@@ -777,7 +789,6 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
     {
         // Call the Real API.
         RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, CallerStackFrame);
-        TrueRtlFreeHeap(RtlProcessHeap(), 0, pContext);
         AsmReturn_x64(RetValue, ReturnAddress);
         return;
     }
@@ -795,11 +806,10 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
     RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, CallerStackFrame);
 
     // Log Post Hooking.
-    PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
+    PostHookTraceAPI(pAPI, CallerStackFrame, szLog, RetValue);
 
     LogMessage(L"%ws\n", szLog);
     TrueRtlFreeHeap(RtlProcessHeap(), 0, szLog);
-    TrueRtlFreeHeap(RtlProcessHeap(), 0, pContext);
 
     // Releasing our hook guard.
     SfwReleaseHookGuard();
@@ -879,10 +889,6 @@ BOOL SfwHookLoadedModules()
             PDETOUR_TRAMPOLINE pRealTrampoline;
             PVOID Real, pRealTarget, pRealDetour;
 
-			if (_wcscmp(ModuleInfo->APIList[j], L"HeapAlloc") == 0)
-            {
-                continue;
-            }
 
             Real = SfwUtilGetProcAddr(pLdrEntry->DllBase, ModuleInfo->APIList[j]);
             if (!Real)
