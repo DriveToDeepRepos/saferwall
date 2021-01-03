@@ -38,6 +38,9 @@ using pfn_wcscat = wchar_t *(__cdecl *)(wchar_t *dest, wchar_t const *src);
 using pfn_wcsncat = wchar_t *(__cdecl *)(wchar_t *dest, wchar_t const *src, size_t count);
 using pfn_wcslen = size_t(__cdecl *)(const wchar_t *str);
 using pfn_wcscmp = int(__cdecl *)(const wchar_t *string1, const wchar_t *string2);
+using pfn_RtlAllocateHeap = PVOID(__stdcall *)(_In_ PVOID HeapHandle, _In_opt_ ULONG Flags, _In_ SIZE_T Size);
+using pfn_RtlFreeHeap = BOOLEAN(__stdcall *)(_In_ PVOID HeapHandle, _In_opt_ ULONG Flags, _Frees_ptr_opt_ PVOID BaseAddress);
+
 
 //
 // Structs

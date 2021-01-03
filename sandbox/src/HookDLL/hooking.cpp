@@ -27,20 +27,26 @@ pfn_wcscat _wcscat = nullptr;
 pfn_wcsncat _wcsncat = nullptr;
 pfn_wcslen _wcslen = nullptr;
 pfn_wcscmp _wcscmp = nullptr;
+extern "C" pfn_RtlAllocateHeap TrueRtlAllocateHeap = nullptr;
+pfn_RtlFreeHeap TrueRtlFreeHeap = nullptr;
 
 DWORD dwTlsIndex;
 BOOL gInsideHook = FALSE;
 PHOOK_CONTEXT pgHookContext = nullptr;
 CRITICAL_SECTION gHookDllLock;
+//ZydisDecoder g_Decoder;
 
 
 extern "C" {
-
 DWORD __stdcall HookHandler(VOID);
-DWORD_PTR __stdcall AsmCall(PVOID, UCHAR, DWORD_PTR *);
+
+#ifdef _WIN64
 DWORD_PTR __stdcall AsmCall_x64(PCONTEXT, PVOID, UCHAR, DWORD_PTR);
-VOID __stdcall AsmReturn(DWORD_PTR, DWORD_PTR);
 VOID __stdcall AsmReturn_x64(DWORD_PTR, DWORD_PTR);
+#else
+DWORD_PTR __stdcall AsmCall(PVOID, UCHAR, DWORD_PTR *);
+VOID __stdcall AsmReturn(DWORD_PTR, DWORD_PTR);
+#endif
 }
 
 //
@@ -306,6 +312,22 @@ ProcessAttach()
         EtwEventWriteString(ProviderHandle, 0, 0, L"wcslen() is NULL");
     }
 
+	TrueRtlAllocateHeap = (pfn_RtlAllocateHeap)GetAPIAddress((PSTR) "RtlAllocateHeap", (PWSTR)L"ntdll.dll");
+    if (TrueRtlAllocateHeap == NULL)
+    {
+        EtwEventWriteString(ProviderHandle, 0, 0, L"RtlAllocateHeap() is NULL");
+    }
+
+	TrueRtlFreeHeap = (pfn_RtlFreeHeap)GetAPIAddress((PSTR) "RtlFreeHeap", (PWSTR)L"ntdll.dll");
+    if (TrueRtlFreeHeap == NULL)
+    {
+        EtwEventWriteString(ProviderHandle, 0, 0, L"RtlAllocateHeap() is NULL");
+    }
+
+   // Initialize decoder context
+   // ZydisDecoderInit(&g_Decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
+
+
 	//
     // Initialize Hook Context.
     //
@@ -481,84 +503,18 @@ extern "C" __declspec(noinline) BOOL WINAPI SfwIsCalledFromSystemMemory(DWORD_PT
     return bFound;
 }
 
-extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCONTEXT pContext)
+extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR RetAddr, PCONTEXT pContext, DWORD_PTR Target)
 {
-    DWORD_PTR Target, Displacement;
     PAPI pAPI = NULL;
-
-    // CALL NEAR, ABSOLUTE INDIRECT.
-    BYTE byte1 = *(BYTE *)(RetAddr - 6);
-    BYTE byte2 = *(BYTE *)(RetAddr - 5);
-    if (byte1 == 0xff && byte2 == 0x15)
-    {
-#ifdef _WIN64
-        Target = *(DWORD_PTR *)(RetAddr + *(DWORD *)(RetAddr - 4));
-#else
-        Target = **((DWORD_PTR **)(RetAddr - 4));
-#endif
-        pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
-    }
-
-    // CALL NEAR, RELATIVE
-    else if (byte2 == 0xE8)
-    {
-        Displacement = *((DWORD_PTR *)(RetAddr - 4));
-        Target = RetAddr + Displacement;
-        pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
-    }
-    // CALL ESI
-    else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd6)
-    {
-#ifndef _WIN64
-        Target = pContext->Rsi;
-#endif
-        pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
-    }
-    // call EDI
-    else if (*(BYTE *)(RetAddr - 2) == 0xff && *(BYTE *)(RetAddr - 1) == 0xd7)
-    {
-#ifndef _WIN64
-        Target = pContext->Edi;
-#endif
-        pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
-    }
-    else
-    {
-        LogMessage(L"Could not find Caller for ReturnAddress: 0x%x, byte1: 0x%x, byte2: 0x%x\n", RetAddr, byte1, byte2);
-    }
-
-    if (pAPI == NULL)
-    {
-        // JMP to a JMP (seen often in debug mode).
-        // FF E0
-        BYTE byte1 = *(BYTE *)(Target);
-        BYTE byte2 = *(BYTE *)(Target+1);
-        if (byte1 == 0xff && byte2 == 0xe0)
-        {
-            Target = pContext->Rax;
-        }
-        else
-        {
-#ifdef _WIN64
-            Target = *(DWORD_PTR *)(Target + 6 + *(DWORD *)(Target + 2));
-#else
-            Target = **((DWORD_PTR **)(Target + 2));
-            Target
-#endif
-        }
-
-        pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
-        if (!pAPI)
-            LogMessage(L"pAPI is NULL 0x%x\n", RetAddr);
-    }
-
+    
+	pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
     return pAPI;
 }
 
 extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI(PWCHAR szLog, PAPI pAPI, DWORD_PTR *BasePointer)
 {
     INT len = 0;
-    PWCHAR szBuff = (PWCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
+    PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
     BOOL bFound = TRUE;
 
     for (int i = 0; i < pAPI->cParams; i++)
@@ -599,14 +555,14 @@ extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI(PWCHAR szLog, PAPI
         }
     }
 
-    RtlFreeHeap(RtlProcessHeap(), 0, szBuff);
+    TrueRtlFreeHeap(RtlProcessHeap(), 0, szBuff);
     return szLog;
 }
 
 extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI_x64(PWCHAR szLog, PAPI pAPI, DWORD_PTR *BasePointer, PCONTEXT pContext)
 {
     INT len = 0;
-    PWCHAR szBuff = (PWCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
+    PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
     BOOL bFound = TRUE;
     DWORD_PTR Param;
 
@@ -668,7 +624,7 @@ extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI_x64(PWCHAR szLog, 
         }
     }
 
-    RtlFreeHeap(RtlProcessHeap(), 0, szBuff);
+    TrueRtlFreeHeap(RtlProcessHeap(), 0, szBuff);
     return szLog;
 }
 
@@ -678,7 +634,7 @@ __declspec(noinline) PWCHAR WINAPI
     PostHookTraceAPI(PAPI pAPI, DWORD_PTR *BasePointer, PWCHAR szLog, DWORD_PTR RetValue)
 {
     INT len = 0;
-    PWCHAR szBuff = (PWCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
+    PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
     BOOL bFound = FALSE;
 
     for (int i = 0; i < pAPI->cParams; i++)
@@ -736,7 +692,7 @@ __declspec(noinline) PWCHAR WINAPI
     }
 
     // Cleanup.
-    RtlFreeHeap(RtlProcessHeap(), 0, szBuff);
+    TrueRtlFreeHeap(RtlProcessHeap(), 0, szBuff);
 
     return szLog;
 }
@@ -774,7 +730,7 @@ GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
     }
 
     // Allocate space to log the API.
-    PWCHAR szLog = (PWCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, 1024);
+    PWCHAR szLog = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, 1024);
 
     // Append the API name.
     _snwprintf(szLog, MAX_PATH, L"%ws(", pAPI->Name);
@@ -789,7 +745,7 @@ GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
     PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
 
     LogMessage(L"%ws\n", szLog);
-    RtlFreeHeap(RtlProcessHeap(), 0, szLog);
+    TrueRtlFreeHeap(RtlProcessHeap(), 0, szLog);
 
     // Releasing our hook guard.
     SfwReleaseHookGuard();
@@ -797,17 +753,19 @@ GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
     // Set eax to RetValue, and ecx to cParams so we know how to adjust the stack.
     AsmReturn(pAPI->cParams, RetValue);
 }
-#endif
 
+#else
 EXTERN_C
 VOID WINAPI
-GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCONTEXT pContext)
+GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCONTEXT pContext, DWORD_PTR RealTarget)
 {
+    DWORD_PTR RetValue;
+
     //
     // Get the target API.
     //
  
-    PAPI pAPI = GetTargetAPI(ReturnAddress, pContext);
+    PAPI pAPI = GetTargetAPI(ReturnAddress, pContext, RealTarget);
     if (!pAPI)
     {
         LogMessage(L"Could not find API!\n");
@@ -818,14 +776,14 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
     if (SfwIsCalledFromSystemMemory(ReturnAddress) || SfwIsInsideHook())
     {
         // Call the Real API.
-        DWORD_PTR RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, CallerStackFrame);
-        RtlFreeHeap(RtlProcessHeap(), 0, pContext);
+        RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, CallerStackFrame);
+        TrueRtlFreeHeap(RtlProcessHeap(), 0, pContext);
         AsmReturn_x64(RetValue, ReturnAddress);
         return;
     }
 
     // Allocate space to log the API.
-    PWCHAR szLog = (PWCHAR)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, 1024);
+    PWCHAR szLog = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, 1024);
 
     // Append the API name.
     _snwprintf(szLog, MAX_PATH, L"%ws(", pAPI->Name);
@@ -834,14 +792,14 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
     PreHookTraceAPI_x64(szLog, pAPI, &CallerStackFrame, pContext);
 
     // Finally perform the call.
-    DWORD_PTR RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, CallerStackFrame);
+    RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, CallerStackFrame);
 
     // Log Post Hooking.
     PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
 
     LogMessage(L"%ws\n", szLog);
-    RtlFreeHeap(RtlProcessHeap(), 0, szLog);
-    RtlFreeHeap(RtlProcessHeap(), 0, pContext);
+    TrueRtlFreeHeap(RtlProcessHeap(), 0, szLog);
+    TrueRtlFreeHeap(RtlProcessHeap(), 0, pContext);
 
     // Releasing our hook guard.
     SfwReleaseHookGuard();
@@ -849,11 +807,10 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
     // Set eax to RetValue, and ecx to cParams so we know how to adjust the stack.
     AsmReturn_x64(RetValue, ReturnAddress);
 }
-
+#endif
 
 BOOL SfwHookLoadedModules()
 {
-    NTSTATUS Status;
     const unsigned initial_size = 256;
     pgHookContext->hashmapA =
         (struct hashmap_s *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(struct hashmap_s));
@@ -879,6 +836,9 @@ BOOL SfwHookLoadedModules()
     pLdrData = pPeb->Ldr;
     pHeadEntry = &pLdrData->InMemoryOrderModuleList;
     pEntry = pHeadEntry->Flink;
+
+	SfwHookBeginTransation();
+
 
     while (pEntry != pHeadEntry)
     {
@@ -917,16 +877,29 @@ BOOL SfwHookLoadedModules()
         for (UINT j = 0; j < ModuleInfo->cAPIs; j++)
         {
             PDETOUR_TRAMPOLINE pRealTrampoline;
-            PVOID pRealTarget, pRealDetour;
+            PVOID Real, pRealTarget, pRealDetour;
 
-            PVOID Real = SfwUtilGetProcAddr(pLdrEntry->DllBase, ModuleInfo->APIList[j]);
+			if (_wcscmp(ModuleInfo->APIList[j], L"HeapAlloc") == 0)
+            {
+                continue;
+            }
+
+            Real = SfwUtilGetProcAddr(pLdrEntry->DllBase, ModuleInfo->APIList[j]);
             if (!Real)
             {
-                LogMessage(L"SfwUtilGetProcAddr failed to find %s", ModuleInfo->APIList[j]);
+                LogMessage(L"SfwUtilGetProcAddr() failed to find %s", ModuleInfo->APIList[j]);
                 continue;
 			}
 
-			SfwHookBeginTransation();
+			//
+			// Begin a new transaction for attaching detours.
+			//
+
+			
+			//
+            // Attach a detour to a target function and
+            // retrieve additional detail about the ultimate target.
+            //
 
             LONG l = DetourAttachEx(&Real, HookHandler, &pRealTrampoline, &pRealTarget, &pRealDetour);
             if (l != NO_ERROR)
@@ -935,7 +908,10 @@ BOOL SfwHookLoadedModules()
                 return FALSE;
             }
 
-            SfwHookCommitTransaction();
+			//
+			// Commit the current transaction for attaching detours.
+			//
+
 
             PAPI pAPI =
                 (PAPI)hashmap_get(pgHookContext->hashmap, ModuleInfo->APIList[j], _wcslen(ModuleInfo->APIList[j])*sizeof(WCHAR));
@@ -945,14 +921,26 @@ BOOL SfwHookLoadedModules()
                 return FALSE;
 			}
 
-            pAPI->RealTarget = pRealTrampoline;
-
             LogMessage(L"%s() Hooked, pRealTarget: 0x%p", ModuleInfo->APIList[j], pRealTarget);
+            pAPI->RealTarget = pRealTrampoline;
 
             if (0 != hashmap_put(pgHookContext->hashmapA, pRealTarget, 0, pAPI))
             {
                 LogMessage(L"hashmap_put failed\n");
                 return FALSE;
+            }
+
+			//
+			// Adjust APIs used by the hook handler to point to the "True" version of the API.
+			//
+
+			if (_wcscmp(ModuleInfo->APIList[j], L"HeapAlloc") == 0)
+            {
+                TrueRtlAllocateHeap = (pfn_RtlAllocateHeap)pRealTrampoline;
+            }
+            else if (_wcscmp(ModuleInfo->APIList[j], L"HeapFree") == 0)
+            {
+                TrueRtlFreeHeap = (pfn_RtlFreeHeap)pRealTrampoline;
             }
         }
 
@@ -962,6 +950,8 @@ BOOL SfwHookLoadedModules()
         pEntry = pEntry->Flink;
 
     }
+
+	SfwHookCommitTransaction();
 
 	return TRUE;
 }

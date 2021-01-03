@@ -5,9 +5,9 @@
 
 EXTERN GenericHookHandler_x64: PROC
 EXTERN NtCurrentTeb: PROC
-EXTERN RtlAllocateHeap: PROC
 EXTERN RtlCaptureContext: PROC
 EXTERN RtlRestoreContext: PROC
+EXTERN TrueRtlAllocateHeap:QWORD
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -59,6 +59,7 @@ POP_NON_VOLATILE MACRO
 ENDM
 
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
 ; implementations
@@ -86,7 +87,7 @@ AsmCall_x64 PROC
     mov r13, rdx    ; target
     mov r14, r8     ; count params
 
-    ; xmm ops will fails if stack is not 16 bits aligned.
+    ; xmm ops will fails if stack is not 16 bytes aligned.
     mov r15, rsp
     and r15, 15 
     sub rsp, r15 
@@ -130,6 +131,7 @@ AsmCall_x64 endp
 
 HookHandler PROC
  
+    ; non volatile registers used in this routine.
     push r12
     push rbx
 
@@ -146,7 +148,7 @@ HookHandler PROC
     mov edx, 8
     mov rcx, qword ptr [rax + 30h]
     sub esp, SHADOW_SPACE
-    call RtlAllocateHeap
+    call TrueRtlAllocateHeap
     add esp, SHADOW_SPACE
     mov r12, rax  ; r12 points to the pContext record.
 
@@ -190,16 +192,18 @@ HookHandler PROC
     mov qword ptr [r12 + 78h], rbx
 
    ; Call GenericHookHandler_x64
-   ; (DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCONTEXT pContext))
-   mov rcx, [ rsp + 48 + 24]
-   lea rdx, [ rsp + 48 + 32 ]
+   ; (DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCONTEXT pContext, DWORD_PTR RealTarget);
+   mov rcx, [ rsp + 48 + 32]
+   lea rdx, [ rsp + 48 + 40 ]
    mov r8, r12
+   mov r9, [ rsp + 48 + 24]
    call GenericHookHandler_x64
 
    ; Balance the stack.
    add rsp, 56  ; size of all volatile registers
    pop rbx
    pop r12
+   add rsp, 8 ; target API push
 
    mov qword ptr [rsp],  rdx ; return addr
    ret

@@ -65,6 +65,13 @@
 #include <psapi.h>
 
 
+//
+// Zydis Disassembler engine.
+//
+
+//#include <Zydis/Zydis.h>
+
+
 //#pragma comment(lib, "wbemuuid.lib")
 //
 //#include <comdef.h>
