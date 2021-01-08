@@ -3,19 +3,16 @@
 
 #include "stdafx.h"
 
-
 //
 // Defines
 //
 
 #define DETOUR_END
 
-
 //
 // Globals
 //
 extern decltype(NtContinue) *TrueNtContinue;
-
 
 __vsnwprintf_fn_t _vsnwprintf = nullptr;
 __snwprintf_fn_t _snwprintf = nullptr;
@@ -34,8 +31,7 @@ DWORD dwTlsIndex;
 BOOL gInsideHook = FALSE;
 PHOOK_CONTEXT pgHookContext = nullptr;
 CRITICAL_SECTION gHookDllLock;
-//ZydisDecoder g_Decoder;
-
+// ZydisDecoder g_Decoder;
 
 extern "C" {
 DWORD __stdcall HookHandler(VOID);
@@ -61,7 +57,6 @@ REGHANDLE ProviderHandle;
 #define ATTACH(x) DetAttach(&(PVOID &)True##x, Hook##x, #x)
 #define DETACH(x) DetDetach(&(PVOID &)True##x, Hook##x, #x)
 
-
 bool
 IsBadPtr(PVOID pPointer)
 {
@@ -83,6 +78,231 @@ IsBadPtr(PVOID pPointer)
 
     return true;
 }
+
+DWORD
+BaseSetLastNTError(IN NTSTATUS Status)
+{
+    DWORD dwErrCode;
+    dwErrCode = RtlNtStatusToDosError(Status);
+    RtlSetLastWin32Error(dwErrCode);
+    return dwErrCode;
+}
+
+LPVOID
+WINAPI
+SfwTlsGetValue(IN DWORD Index)
+{
+    PTEB Teb;
+
+    /* Get the TEB and clear the last error */
+    Teb = NtCurrentTeb();
+    Teb->LastErrorValue = 0;
+
+    /* Check for simple TLS index */
+    if (Index < TLS_MINIMUM_AVAILABLE)
+    {
+        /* Return it */
+        return Teb->TlsSlots[Index];
+    }
+
+    /* Check for valid index */
+    if (Index >= TLS_EXPANSION_SLOTS + TLS_MINIMUM_AVAILABLE)
+    {
+        /* Fail */
+        BaseSetLastNTError(STATUS_INVALID_PARAMETER);
+        return NULL;
+    }
+
+    /* The expansion slots are allocated on demand, so check for it. */
+    Teb->LastErrorValue = 0;
+    if (!Teb->TlsExpansionSlots)
+        return NULL;
+
+    /* Return the value from the expansion slots */
+    return Teb->TlsExpansionSlots[Index - TLS_MINIMUM_AVAILABLE];
+}
+
+BOOL WINAPI
+SfwTlsSetValue(IN DWORD Index, IN LPVOID Value)
+{
+    DWORD TlsIndex;
+    PTEB Teb = NtCurrentTeb();
+
+    /* Check for simple TLS index */
+    if (Index < TLS_MINIMUM_AVAILABLE)
+    {
+        /* Return it */
+        Teb->TlsSlots[Index] = Value;
+        return TRUE;
+    }
+
+    /* Check if this is an expansion slot */
+    TlsIndex = Index - TLS_MINIMUM_AVAILABLE;
+    if (TlsIndex >= TLS_EXPANSION_SLOTS)
+    {
+        /* Fail */
+        BaseSetLastNTError(STATUS_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    /* Do we not have expansion slots? */
+    if (!Teb->TlsExpansionSlots)
+    {
+        /* Get the PEB lock to see if we still need them */
+        RtlAcquirePebLock();
+        if (!Teb->TlsExpansionSlots)
+        {
+            /* Allocate them */
+            Teb->TlsExpansionSlots =
+                (PVOID *)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, TLS_EXPANSION_SLOTS * sizeof(PVOID));
+            if (!Teb->TlsExpansionSlots)
+            {
+                /* Fail */
+                RtlReleasePebLock();
+                BaseSetLastNTError(STATUS_NO_MEMORY);
+                return FALSE;
+            }
+        }
+
+        /* Release the lock */
+        RtlReleasePebLock();
+    }
+
+    /* Write the value */
+    Teb->TlsExpansionSlots[TlsIndex] = Value;
+
+    /* Success */
+    return TRUE;
+}
+
+BOOL WINAPI
+SfwTlsFree(IN DWORD Index)
+{
+    BOOL BitSet;
+    PPEB Peb;
+    ULONG TlsIndex;
+    PVOID TlsBitmap;
+    NTSTATUS Status;
+
+    /* Acquire the PEB lock and grab the PEB */
+    Peb = NtCurrentPeb();
+    RtlAcquirePebLock();
+
+    /* Check if the index is too high */
+    if (Index >= TLS_MINIMUM_AVAILABLE)
+    {
+        /* Check if it can fit in the expansion slots */
+        TlsIndex = Index - TLS_MINIMUM_AVAILABLE;
+        if (TlsIndex >= TLS_EXPANSION_SLOTS)
+        {
+            /* It's invalid */
+            BaseSetLastNTError(STATUS_INVALID_PARAMETER);
+            RtlReleasePebLock();
+            return FALSE;
+        }
+        else
+        {
+            /* Use the expansion bitmap */
+            TlsBitmap = Peb->TlsExpansionBitmap;
+            Index = TlsIndex;
+        }
+    }
+    else
+    {
+        /* Use the normal bitmap */
+        TlsBitmap = Peb->TlsBitmap;
+    }
+
+    /* Check if the index was set */
+    BitSet = RtlAreBitsSet((PRTL_BITMAP)TlsBitmap, Index, 1);
+    if (BitSet)
+    {
+        /* Tell the kernel to free the TLS cells */
+        Status = NtSetInformationThread(NtCurrentThread(), ThreadZeroTlsCell, &Index, sizeof(DWORD));
+        if (!NT_SUCCESS(Status))
+        {
+            BaseSetLastNTError(STATUS_INVALID_PARAMETER);
+            RtlReleasePebLock();
+            return FALSE;
+        }
+
+        /* Clear the bit */
+        RtlClearBits((PRTL_BITMAP)TlsBitmap, Index, 1);
+    }
+    else
+    {
+        /* Fail */
+        BaseSetLastNTError(STATUS_INVALID_PARAMETER);
+        RtlReleasePebLock();
+        return FALSE;
+    }
+
+    /* Done! */
+    RtlReleasePebLock();
+    return TRUE;
+}
+
+DWORD
+WINAPI
+SfwTlsAlloc(VOID)
+{
+    ULONG Index;
+    PTEB Teb;
+    PPEB Peb;
+
+    /* Get the PEB and TEB, lock the PEB */
+    Teb = NtCurrentTeb();
+    Peb = Teb->ProcessEnvironmentBlock;
+    RtlAcquirePebLock();
+
+    /* Try to get regular TEB slot */
+    Index = RtlFindClearBitsAndSet((PRTL_BITMAP)Peb->TlsBitmap, 1, 0);
+    if (Index != 0xFFFFFFFF)
+    {
+        /* Clear the value. */
+        Teb->TlsSlots[Index] = 0;
+        RtlReleasePebLock();
+        return Index;
+    }
+
+    /* If it fails, try to find expansion TEB slot. */
+    Index = RtlFindClearBitsAndSet((PRTL_BITMAP)Peb->TlsExpansionBitmap, 1, 0);
+    if (Index != 0xFFFFFFFF)
+    {
+        /* Is there no expansion slot yet? */
+        if (!Teb->TlsExpansionSlots)
+        {
+            /* Allocate an array */
+            Teb->TlsExpansionSlots =
+                (PVOID *)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, TLS_EXPANSION_SLOTS * sizeof(PVOID));
+        }
+
+        /* Did we get an array? */
+        if (!Teb->TlsExpansionSlots)
+        {
+            /* Fail */
+            RtlClearBits((PRTL_BITMAP)Peb->TlsExpansionBitmap, Index, 1);
+            Index = 0xFFFFFFFF;
+            BaseSetLastNTError(STATUS_NO_MEMORY);
+        }
+        else
+        {
+            /* Clear the value. */
+            Teb->TlsExpansionSlots[Index] = 0;
+            Index += TLS_MINIMUM_AVAILABLE;
+        }
+    }
+    else
+    {
+        /* Fail */
+        BaseSetLastNTError(STATUS_NO_MEMORY);
+    }
+
+    /* Release the lock and return */
+    RtlReleasePebLock();
+    return Index;
+}
+
 extern "C" __declspec(noinline) BOOL WINAPI SfwIsInsideHook()
 /*++
 
@@ -111,9 +331,9 @@ Return Value:
     FALSE: otherwise.
 --*/
 {
-    if (!TlsGetValue(dwTlsIndex))
+    if (!SfwTlsGetValue(dwTlsIndex))
     {
-        TlsSetValue(dwTlsIndex, (LPVOID)TRUE);
+        SfwTlsSetValue(dwTlsIndex, (LPVOID)TRUE);
         return FALSE;
     }
     return TRUE;
@@ -122,13 +342,13 @@ Return Value:
 VOID
 SfwReleaseHookGuard()
 {
-    TlsSetValue(dwTlsIndex, (LPVOID)FALSE);
+    SfwTlsSetValue(dwTlsIndex, (LPVOID)FALSE);
 }
 
 VOID
 EnterHookGuard()
 {
-    TlsSetValue(dwTlsIndex, (LPVOID)TRUE);
+    SfwTlsSetValue(dwTlsIndex, (LPVOID)TRUE);
 }
 
 LONG
@@ -234,11 +454,11 @@ SfwUtilGetProcAddr(HANDLE ModuleHandle, LPCWSTR ProcedureName)
 {
     PVOID Address;
     NTSTATUS Status;
-    
-	UNICODE_STRING wideProcedureName;
+
+    UNICODE_STRING wideProcedureName;
     RtlInitUnicodeString(&wideProcedureName, ProcedureName);
-    
-	ANSI_STRING RoutineName = {0};
+
+    ANSI_STRING RoutineName = {0};
     RtlUnicodeStringToAnsiString(&RoutineName, &wideProcedureName, TRUE);
 
     Status = LdrGetProcedureAddress(ModuleHandle, &RoutineName, 0, &Address);
@@ -263,12 +483,11 @@ ProcessAttach()
     // Allocate a TLS index.
     //
 
-    if ((dwTlsIndex = TlsAlloc()) == TLS_OUT_OF_INDEXES)
+    if ((dwTlsIndex = SfwTlsAlloc()) == TLS_OUT_OF_INDEXES)
     {
         EtwEventWriteString(ProviderHandle, 0, 0, L"TlsAlloc() failed");
         return FALSE;
     }
-
 
     //
     // Resolve APIs not exposed by ntdll.
@@ -303,7 +522,7 @@ ProcessAttach()
         EtwEventWriteString(ProviderHandle, 0, 0, L"memcmp() is NULL");
     }
 
-	_wcscmp = (pfn_wcscmp)GetAPIAddress((PSTR) "wcscmp", (PWSTR)L"ntdll.dll");
+    _wcscmp = (pfn_wcscmp)GetAPIAddress((PSTR) "wcscmp", (PWSTR)L"ntdll.dll");
     if (_wcscmp == NULL)
     {
         EtwEventWriteString(ProviderHandle, 0, 0, L"wcscmp() is NULL");
@@ -315,7 +534,7 @@ ProcessAttach()
         EtwEventWriteString(ProviderHandle, 0, 0, L"wcscat() is NULL");
     }
 
-	_wcsncat = (pfn_wcsncat)GetAPIAddress((PSTR) "wcsncat", (PWSTR)L"ntdll.dll");
+    _wcsncat = (pfn_wcsncat)GetAPIAddress((PSTR) "wcsncat", (PWSTR)L"ntdll.dll");
     if (_wcsncat == NULL)
     {
         EtwEventWriteString(ProviderHandle, 0, 0, L"wcsncat() is NULL");
@@ -327,38 +546,36 @@ ProcessAttach()
         EtwEventWriteString(ProviderHandle, 0, 0, L"strlen() is NULL");
     }
 
-	_wcslen = (pfn_wcslen)GetAPIAddress((PSTR) "wcslen", (PWSTR)L"ntdll.dll");
+    _wcslen = (pfn_wcslen)GetAPIAddress((PSTR) "wcslen", (PWSTR)L"ntdll.dll");
     if (_wcslen == NULL)
     {
         EtwEventWriteString(ProviderHandle, 0, 0, L"wcslen() is NULL");
     }
 
-	TrueRtlAllocateHeap = (pfn_RtlAllocateHeap)GetAPIAddress((PSTR) "RtlAllocateHeap", (PWSTR)L"ntdll.dll");
+    TrueRtlAllocateHeap = (pfn_RtlAllocateHeap)GetAPIAddress((PSTR) "RtlAllocateHeap", (PWSTR)L"ntdll.dll");
     if (TrueRtlAllocateHeap == NULL)
     {
         EtwEventWriteString(ProviderHandle, 0, 0, L"RtlAllocateHeap() is NULL");
     }
 
-	TrueRtlFreeHeap = (pfn_RtlFreeHeap)GetAPIAddress((PSTR) "RtlFreeHeap", (PWSTR)L"ntdll.dll");
+    TrueRtlFreeHeap = (pfn_RtlFreeHeap)GetAPIAddress((PSTR) "RtlFreeHeap", (PWSTR)L"ntdll.dll");
     if (TrueRtlFreeHeap == NULL)
     {
         EtwEventWriteString(ProviderHandle, 0, 0, L"RtlAllocateHeap() is NULL");
     }
 
-   // Initialize decoder context
-   // ZydisDecoderInit(&g_Decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
+    // Initialize decoder context
+    // ZydisDecoderInit(&g_Decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
 
-
-	//
+    //
     // Initialize Hook Context.
     //
 
-    pgHookContext = 
-        (PHOOK_CONTEXT)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(HOOK_CONTEXT));
+    pgHookContext = (PHOOK_CONTEXT)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(HOOK_CONTEXT));
 
-	//
-	// Load API Definitions schemas.
-	//
+    //
+    // Load API Definitions schemas.
+    //
 
     SfwSchemaLoadAPIDef();
 
@@ -381,15 +598,14 @@ ProcessAttach()
 BOOL
 ProcessDetach()
 {
-
     SfwHookBeginTransation();
-    //DETACH(NtContinue);
+    // DETACH(NtContinue);
     SfwHookCommitTransaction();
 
-    TlsFree(dwTlsIndex);
+    SfwTlsFree(dwTlsIndex);
     EtwEventUnregister(ProviderHandle);
 
-		// Cleanup
+    // Cleanup
     // hashmap_destroy(&hashmap);
     // hashmap_destroy(&hashmapA);
     // hashmap_destroy(&hashmapM);
@@ -460,20 +676,17 @@ HookNtAPIs()
     // Lib Load APIs.
     //
 
-    
-    //ATTACH(NtContinue);
-  
+    // ATTACH(NtContinue);
 
     SfwHookCommitTransaction();
 
     LogMessage(L"HookNtAPIs End");
 }
 
-
 extern "C" __declspec(noinline) BOOL WINAPI SfwIsCalledFromSystemMemory(DWORD_PTR ReturnAddress)
 {
     if (ReturnAddress >= pgHookContext->ModuleBase &&
-		ReturnAddress <= pgHookContext->ModuleBase + pgHookContext->SizeOfImage)
+        ReturnAddress <= pgHookContext->ModuleBase + pgHookContext->SizeOfImage)
     {
         return FALSE;
     }
@@ -527,8 +740,7 @@ extern "C" __declspec(noinline) BOOL WINAPI SfwIsCalledFromSystemMemory(DWORD_PT
 extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR Target)
 {
     PAPI pAPI = NULL;
-    
-	pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
+    pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
     return pAPI;
 }
 
@@ -580,7 +792,8 @@ extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI(PWCHAR szLog, PAPI
     return szLog;
 }
 
-extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI_x64(PWCHAR szLog, PAPI pAPI, DWORD_PTR *BasePointer, PCONTEXT pContext)
+extern "C" __declspec(noinline) PWCHAR WINAPI
+    PreHookTraceAPI_x64(PWCHAR szLog, PAPI pAPI, DWORD_PTR *BasePointer, PCONTEXT pContext)
 {
     INT len = 0;
     PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
@@ -589,7 +802,6 @@ extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI_x64(PWCHAR szLog, 
 
     for (int i = 0; i < pAPI->cParams; i++)
     {
-
 #ifdef _WIN64
         switch (i)
         {
@@ -607,7 +819,7 @@ extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI_x64(PWCHAR szLog, 
             break;
         }
 #else
-	Param = *(DWORD_PTR *)(BasePointer + i);
+        Param = *(DWORD_PTR *)(BasePointer + i);
 #endif
 
         switch (pAPI->Parameters[i].Annotation)
@@ -651,8 +863,7 @@ extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI_x64(PWCHAR szLog, 
 
 // Log Return Value and __Out__ Buffers.
 EXTERN_C
-__declspec(noinline) PWCHAR WINAPI
-    PostHookTraceAPI(PAPI pAPI, DWORD_PTR BasePointer, PWCHAR szLog, DWORD_PTR RetValue)
+__declspec(noinline) PWCHAR WINAPI PostHookTraceAPI(PAPI pAPI, DWORD_PTR *BasePointer, PWCHAR szLog, DWORD_PTR RetValue)
 {
     INT len = 0;
     PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
@@ -660,7 +871,12 @@ __declspec(noinline) PWCHAR WINAPI
 
     for (int i = 0; i < pAPI->cParams; i++)
     {
-        DWORD_PTR Param =  *(DWORD_PTR *)(BasePointer + 8*i);
+#ifdef _WIN64
+        DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + 8 * i);
+#else
+        DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + i);
+#endif
+
         switch (pAPI->Parameters[i].Annotation)
         {
         case PARAM_OUT:
@@ -672,7 +888,7 @@ __declspec(noinline) PWCHAR WINAPI
                 bFound = TRUE;
                 break;
             case PARAM_PTR_IMM:
-                if (!IsBadPtr((intptr_t *)Param))
+                if (!IsBadReadPtr((intptr_t *)Param, 4))
                     Param = *(DWORD_PTR *)Param;
                 _snwprintf(szBuff, MAX_PATH, L"out: %s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
                 bFound = TRUE;
@@ -719,15 +935,15 @@ __declspec(noinline) PWCHAR WINAPI
 }
 
 #ifndef _WIN64
-EXTERN_C VOID WINAPI
-GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
+EXTERN_C
+VOID WINAPI
+GenericHookHandler(DWORD_PTR RealTarget, DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
 {
-
-	//
+    //
     // Get the target API.
-	//
+    //
 
-    PAPI pAPI = GetTargetAPI(ReturnAddress);
+    PAPI pAPI = GetTargetAPI(RealTarget);
     if (!pAPI)
     {
         LogMessage(L"Could not find API!\n");
@@ -755,7 +971,7 @@ GenericHookHandler(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame)
     DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
 
     // Log Post Hooking.
-    PostHookTraceAPI(pAPI, CallerStackFrame, szLog, RetValue);
+    PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
 
     LogMessage(L"%ws\n", szLog);
     TrueRtlFreeHeap(RtlProcessHeap(), 0, szLog);
@@ -778,7 +994,7 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
     // Get the target API.
     //
     PAPI pAPI = GetTargetAPI(RealTarget);
-	if (!pAPI)
+    if (!pAPI)
     {
         LogMessage(L"Could not find API!\n");
         return;
@@ -819,13 +1035,14 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
 }
 #endif
 
-BOOL SfwHookLoadedModules()
+BOOL
+SfwHookLoadedModules()
 {
     const unsigned initial_size = 256;
     pgHookContext->hashmapA =
         (struct hashmap_s *)RtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, sizeof(struct hashmap_s));
-	if (0 != hashmap_create(initial_size, pgHookContext->hashmapA))
-	{
+    if (0 != hashmap_create(initial_size, pgHookContext->hashmapA))
+    {
         LogMessage(L"hashmap_create failed\n");
     }
 
@@ -847,16 +1064,23 @@ BOOL SfwHookLoadedModules()
     pHeadEntry = &pLdrData->InMemoryOrderModuleList;
     pEntry = pHeadEntry->Flink;
 
-	SfwHookBeginTransation();
+    //
+    // Begin a new transaction for attaching detours.
+    //
+    SfwHookBeginTransation();
 
+    //
+    // Walk through the loaded modules.
+    //
 
     while (pEntry != pHeadEntry)
     {
         pLdrEntry = CONTAINING_RECORD(pEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
 
-		//
+        //
         // Skip the main executable module.
-		//
+        //
+
         if (_wcscmp(pLdrEntry->FullDllName.Buffer, pPeb->ProcessParameters->ImagePathName.Buffer) == 0)
         {
             pgHookContext->ModuleBase = (DWORD_PTR)pLdrEntry->DllBase;
@@ -865,11 +1089,11 @@ BOOL SfwHookLoadedModules()
             continue;
         }
 
-		//
+        //
         // Get ModuleInfo from hashmap.
-		//
+        //
 
-		UNICODE_STRING szModuleName = {0};
+        UNICODE_STRING szModuleName = {0};
         RtlCreateUnicodeString(&szModuleName, pLdrEntry->BaseDllName.Buffer);
         RtlDowncaseUnicodeString(&szModuleName, &pLdrEntry->BaseDllName, FALSE);
         PMODULE_INFO ModuleInfo =
@@ -881,28 +1105,22 @@ BOOL SfwHookLoadedModules()
             continue;
         }
 
-		//
+        //
         // Walk over APIs and hook each of them.
-		//
+        //
         for (UINT j = 0; j < ModuleInfo->cAPIs; j++)
         {
             PDETOUR_TRAMPOLINE pRealTrampoline;
             PVOID Real, pRealTarget, pRealDetour;
-
 
             Real = SfwUtilGetProcAddr(pLdrEntry->DllBase, ModuleInfo->APIList[j]);
             if (!Real)
             {
                 LogMessage(L"SfwUtilGetProcAddr() failed to find %s", ModuleInfo->APIList[j]);
                 continue;
-			}
+            }
 
-			//
-			// Begin a new transaction for attaching detours.
-			//
-
-			
-			//
+            //
             // Attach a detour to a target function and
             // retrieve additional detail about the ultimate target.
             //
@@ -914,18 +1132,13 @@ BOOL SfwHookLoadedModules()
                 return FALSE;
             }
 
-			//
-			// Commit the current transaction for attaching detours.
-			//
-
-
-            PAPI pAPI =
-                (PAPI)hashmap_get(pgHookContext->hashmap, ModuleInfo->APIList[j], _wcslen(ModuleInfo->APIList[j])*sizeof(WCHAR));
+            PAPI pAPI = (PAPI)hashmap_get(
+                pgHookContext->hashmap, ModuleInfo->APIList[j], _wcslen(ModuleInfo->APIList[j]) * sizeof(WCHAR));
             if (!pAPI)
             {
                 LogMessage(L"hashmap_get() failed");
                 return FALSE;
-			}
+            }
 
             LogMessage(L"%s() Hooked, pRealTarget: 0x%p", ModuleInfo->APIList[j], pRealTarget);
             pAPI->RealTarget = pRealTrampoline;
@@ -936,11 +1149,11 @@ BOOL SfwHookLoadedModules()
                 return FALSE;
             }
 
-			//
-			// Adjust APIs used by the hook handler to point to the "True" version of the API.
-			//
+            //
+            // Adjust APIs used by the hook handler to point to the "True" version of the API.
+            //
 
-			if (_wcscmp(ModuleInfo->APIList[j], L"HeapAlloc") == 0)
+            if (_wcscmp(ModuleInfo->APIList[j], L"HeapAlloc") == 0)
             {
                 TrueRtlAllocateHeap = (pfn_RtlAllocateHeap)pRealTrampoline;
             }
@@ -950,14 +1163,17 @@ BOOL SfwHookLoadedModules()
             }
         }
 
-		//
+        //
         // Iterate to the next entry.
-		//
-        pEntry = pEntry->Flink;
+        //
 
+        pEntry = pEntry->Flink;
     }
 
-	SfwHookCommitTransaction();
+    //
+    // Commit the current transaction for attaching detours.
+    //
+    SfwHookCommitTransaction();
 
-	return TRUE;
+    return TRUE;
 }

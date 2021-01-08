@@ -7,7 +7,7 @@
 ; References to C functions
 ;
 
-EXTERN GenericHookHandler@8: PROC
+EXTERN GenericHookHandler@12: PROC
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;
@@ -48,10 +48,10 @@ AsmCall endp
 
 HookHandler proc
 
-   call GenericHookHandler@8
-   sub esp, 8                       ; Balance the stack, 4 byte due to the call API + 4 byte call GenericHookHandler
+   call GenericHookHandler@12
+   sub esp, 8              
 
-   mov edx, dword ptr [esp]
+   mov edx, dword ptr [esp]   ; get the return addr
    imul ecx, 4
    add esp, ecx
    mov dword ptr [esp],  edx

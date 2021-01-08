@@ -130,7 +130,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)include\phnt;$(SolutionDir)lib\Detours\src;$(SolutionDir)lib\zydis\include;$(SolutionDir)lib\zydis\dependencies\zycore\include;$(SolutionDir)lib\zydis\build;$(SolutionDir)lib\zydis\build\zycore;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
-      <ExceptionHandling>Sync</ExceptionHandling>
+      <ExceptionHandling>false</ExceptionHandling>
       <ControlFlowGuard>false</ControlFlowGuard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <SupportJustMyCode>false</SupportJustMyCode>
