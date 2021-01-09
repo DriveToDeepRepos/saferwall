@@ -888,8 +888,8 @@ __declspec(noinline) PWCHAR WINAPI PostHookTraceAPI(PAPI pAPI, DWORD_PTR *BasePo
                 bFound = TRUE;
                 break;
             case PARAM_PTR_IMM:
-                if (!IsBadReadPtr((intptr_t *)Param, 4))
-                    Param = *(DWORD_PTR *)Param;
+                //if (!IsBadReadPtr((intptr_t *)Param, 8))
+                //    Param = *(DWORD_PTR *)Param;
                 _snwprintf(szBuff, MAX_PATH, L"out: %s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
                 bFound = TRUE;
                 break;
@@ -1022,7 +1022,7 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
     RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, CallerStackFrame);
 
     // Log Post Hooking.
-    PostHookTraceAPI(pAPI, CallerStackFrame, szLog, RetValue);
+    PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
 
     LogMessage(L"%ws\n", szLog);
     TrueRtlFreeHeap(RtlProcessHeap(), 0, szLog);

@@ -166,15 +166,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="test_heap.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="test_heap.cpp" />
     <ClCompile Include="test_file.cpp" />
     <ClCompile Include="test_libload.cpp" />
     <ClCompile Include="test_memory.cpp" />
     <ClCompile Include="test_ole.cpp" />
     <ClCompile Include="test_processthread.cpp" />
     <ClCompile Include="test_registry.cpp" />
-    <ClCompile Include="test_sync.cpp" />
+    <ClCompile Include="test_synch.cpp" />
     <ClCompile Include="test_wincrypt.cpp" />
     <ClCompile Include="test_winhttp.cpp" />
     <ClCompile Include="test_wininet.cpp" />

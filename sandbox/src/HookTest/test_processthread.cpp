@@ -12,28 +12,50 @@ ThreadFunc(void *data)
 VOID
 TestProcessThreadHooks()
 {
-
+    BOOL bOK;
+    DWORD dwPid = 0;
     STARTUPINFO info = {sizeof(info)};
-    DWORD dwPid;
     PROCESS_INFORMATION processInfo;
+    HANDLE hProcess, hThread = 0;
 
     wprintf(L"[+] Calling CreateProcess\n");
-    if (CreateProcess(L"C:\\Windows\\notepad.exe", NULL, NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo))
+    bOK = CreateProcess(L"C:\\Windows\\notepad.exe", NULL, NULL, NULL, TRUE, 0, NULL, NULL, &info, &processInfo);
+    if (!bOK)
     {
-        dwPid = GetProcessId(processInfo.hProcess);
-        WaitForSingleObject(processInfo.hProcess, INFINITE);
+        PrintError("CreateProcess");
+        goto END;
     }
 
     wprintf(L"[+] Calling CreateThread\n");
-    HANDLE hThread = CreateThread(NULL, 0, ThreadFunc, NULL, 0, NULL);
+    hThread = CreateThread(NULL, 0, ThreadFunc, NULL, 0, NULL);
+    if (!hThread)
+    {
+        PrintError("CreateThread");
+        goto END;
+
+    }
+
+    wprintf(L"[+] Calling OpenProcess\n");
+    dwPid = GetProcessId(processInfo.hProcess);
+    hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwPid);
+    if (!hProcess)
+    {
+        PrintError("OpenProcess");
+        goto END;
+    }
+
+	wprintf(L"[+] Calling TerminateProcess\n");
+	TerminateProcess(hProcess, 0);
+
+END:
+    if (bOK)
+    {
+		CloseHandle(processInfo.hProcess);
+		CloseHandle(processInfo.hThread);
+	}
+    
     if (hThread)
     {
-        // Optionally do stuff, such as wait on the thread.
+        CloseHandle(hThread);
     }
-    wprintf(L"[+] Calling OpenProcess\n");
-    HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, dwPid);
-
-    CloseHandle(processInfo.hProcess);
-    CloseHandle(processInfo.hThread);
-    CloseHandle(hThread);
 }

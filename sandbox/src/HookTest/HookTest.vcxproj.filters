@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="test_file.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -39,9 +36,6 @@
     <ClCompile Include="test_libload.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="test_sync.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="test_winsvc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -55,6 +49,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="test_heap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test_synch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

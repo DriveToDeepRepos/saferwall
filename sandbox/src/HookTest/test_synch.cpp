@@ -9,5 +9,21 @@ TestSyncHooks()
     DelayInterval.QuadPart = llDelay;
     static NTSTATUS(__stdcall * NtDelayExecution)(IN BOOLEAN Alertable, IN PLARGE_INTEGER DelayInterval) = (NTSTATUS(
         __stdcall *)(BOOLEAN, PLARGE_INTEGER))GetProcAddress(GetModuleHandle(L"ntdll.dll"), "NtDelayExecution");
+
+	
+    wprintf(L" ========= Testing sync apis ========= \n\n");
+
+    wprintf(L"[+] Calling NtDelayExecution\n");
     NtDelayExecution(FALSE, &DelayInterval);
+
+	wprintf(L"[+] Calling CreateMutex\n");
+    SECURITY_ATTRIBUTES MutexAttributes = {0};
+    BOOL bInitialOwner = TRUE;
+    CHAR szMutexName[] = "SfwMutex";
+    HANDLE hMutex = CreateMutexA(&MutexAttributes, bInitialOwner, szMutexName);
+    if (!hMutex)
+    {
+        PrintError("CreateMutexA");
+	}
+	
 }
