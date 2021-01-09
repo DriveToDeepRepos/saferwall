@@ -39,11 +39,12 @@ LoadHookModule()
 int
 main()
 {
-    LARGE_INTEGER StartingTime, EndingTime, ElapsedMicroseconds;
-    LARGE_INTEGER Frequency;
+    LARGE_INTEGER StartingTime, EndingTime;
+    LARGE_INTEGER Frequency, ElapsedMicroseconds;
 
+	//
     // Prepare timer.
-    //
+	//
 
     QueryPerformanceFrequency(&Frequency);
     QueryPerformanceCounter(&StartingTime);
@@ -57,8 +58,9 @@ main()
 
     //
     // If the driver is not running,
-    // Let's load it.
+    // Load the DLL manually.
     //
+
     LoadHookModule();
 
     //

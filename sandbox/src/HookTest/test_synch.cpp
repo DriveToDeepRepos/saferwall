@@ -19,8 +19,8 @@ TestSyncHooks()
 	wprintf(L"[+] Calling CreateMutex\n");
     SECURITY_ATTRIBUTES MutexAttributes = {0};
     BOOL bInitialOwner = TRUE;
-    CHAR szMutexName[] = "SfwMutex";
-    HANDLE hMutex = CreateMutexA(&MutexAttributes, bInitialOwner, szMutexName);
+    WCHAR szMutexName[] = L"SfwMutex";
+    HANDLE hMutex = CreateMutexW(&MutexAttributes, bInitialOwner, szMutexName);
     if (!hMutex)
     {
         PrintError("CreateMutexA");

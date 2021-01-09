@@ -793,7 +793,7 @@ extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI(PWCHAR szLog, PAPI
 }
 
 extern "C" __declspec(noinline) PWCHAR WINAPI
-    PreHookTraceAPI_x64(PWCHAR szLog, PAPI pAPI, DWORD_PTR *BasePointer, PCONTEXT pContext)
+    PreHookTraceAPI_x64(PWCHAR szLog, PAPI pAPI, DWORD_PTR BasePointer, PCONTEXT pContext)
 {
     INT len = 0;
     PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
@@ -817,9 +817,12 @@ extern "C" __declspec(noinline) PWCHAR WINAPI
         case 3:
             Param = pContext->R9;
             break;
+        default:
+            Param = *((DWORD_PTR *)BasePointer + i);
+            break;
         }
 #else
-        Param = *(DWORD_PTR *)(BasePointer + i);
+        Param = *((DWORD_PTR *)BasePointer + i);
 #endif
 
         switch (pAPI->Parameters[i].Annotation)
@@ -863,59 +866,75 @@ extern "C" __declspec(noinline) PWCHAR WINAPI
 
 // Log Return Value and __Out__ Buffers.
 EXTERN_C
-__declspec(noinline) PWCHAR WINAPI PostHookTraceAPI(PAPI pAPI, DWORD_PTR *BasePointer, PWCHAR szLog, DWORD_PTR RetValue)
+__declspec(noinline) PWCHAR WINAPI PostHookTraceAPI(PAPI pAPI, DWORD_PTR BasePointer, PWCHAR szLog, DWORD_PTR RetValue, PCONTEXT pContext)
 {
     INT len = 0;
     PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
-    BOOL bFound = FALSE;
+    BOOL bFound = TRUE;
+    DWORD_PTR Param;
 
+	//
+	// Iterate over parameteres 
     for (int i = 0; i < pAPI->cParams; i++)
     {
 #ifdef _WIN64
-        DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + 8 * i);
+        switch (i)
+        {
+        case 0:
+            Param = pContext->Rcx;
+            break;
+        case 1:
+            Param = pContext->Rdx;
+            break;
+        case 2:
+            Param = pContext->R8;
+            break;
+        case 3:
+            Param = pContext->R9;
+            break;
+        default:
+            Param = *((DWORD_PTR*)BasePointer + i);
+            break;
+        }
 #else
-        DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + i);
+        Param = *(DWORD_PTR *)(BasePointer + i);
 #endif
 
-        switch (pAPI->Parameters[i].Annotation)
-        {
-        case PARAM_OUT:
-        case PARAM_IN_OUT:
-            switch (pAPI->Parameters[i].Type)
-            {
-            case PARAM_IMM:
-                _snwprintf(szBuff, MAX_PATH, L"out: %s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
-                bFound = TRUE;
-                break;
-            case PARAM_PTR_IMM:
-                //if (!IsBadReadPtr((intptr_t *)Param, 8))
-                //    Param = *(DWORD_PTR *)Param;
-                _snwprintf(szBuff, MAX_PATH, L"out: %s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
-                bFound = TRUE;
-                break;
-            case PARAM_ASCII_STR:
-                _snwprintf(szBuff, MAX_PATH, L"out: %s:%s, ", pAPI->Parameters[i].Name, (PCHAR)Param);
-                bFound = TRUE;
-                break;
-            case PARAM_WIDE_STR:
-                _snwprintf(szBuff, MAX_PATH, L"out: %s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
-                bFound = TRUE;
-                break;
-            case PARAM_PTR_STRUCT:
-                _snwprintf(szBuff, MAX_PATH, L"out: %s:0x%p, ", (PCHAR)pAPI->Parameters[i].Name, (PVOID)Param);
-                bFound = TRUE;
-                break;
-            default:
-                break;
-            }
+		switch (pAPI->Parameters[i].Annotation)
+		{
+		case PARAM_OUT:
+		case PARAM_IN_OUT:
+			switch (pAPI->Parameters[i].Type)
+			{
+			case PARAM_IMM:
+				_snwprintf(szBuff, MAX_PATH, L"out: %s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
+				break;
+			case PARAM_PTR_IMM:
+				if (!IsBadReadPtr((intptr_t *)Param, 8))
+					Param = *(DWORD_PTR *)Param;
+				_snwprintf(szBuff, MAX_PATH, L"out: %s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
+				break;
+			case PARAM_ASCII_STR:
+				_snwprintf(szBuff, MAX_PATH, L"out: %s:%s, ", pAPI->Parameters[i].Name, (PCHAR)Param);
+				break;
+			case PARAM_WIDE_STR:
+				_snwprintf(szBuff, MAX_PATH, L"out: %s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+				break;
+			case PARAM_PTR_STRUCT:
+				_snwprintf(szBuff, MAX_PATH, L"out: %s:0x%p, ", (PCHAR)pAPI->Parameters[i].Name, (PVOID)Param);
+				break;
+			default:
+				bFound = FALSE;
+				break;
+			}
 
-            if (bFound)
-            {
-                _wcsncat(szLog, szBuff, _wcslen(szBuff));
-                RtlZeroMemory(szBuff, MAX_PATH);
-            }
-        }
-    }
+			if (bFound)
+			{
+				_wcsncat(szLog, szBuff, _wcslen(szBuff));
+				RtlZeroMemory(szBuff, MAX_PATH);
+			}
+		}
+	}
 
     // Log Return Value
     if (pAPI->ReturnVoid)
@@ -971,7 +990,7 @@ GenericHookHandler(DWORD_PTR RealTarget, DWORD_PTR ReturnAddress, DWORD_PTR Call
     DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
 
     // Log Post Hooking.
-    PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
+    PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue, NULL);
 
     LogMessage(L"%ws\n", szLog);
     TrueRtlFreeHeap(RtlProcessHeap(), 0, szLog);
@@ -1016,13 +1035,13 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
     _snwprintf(szLog, MAX_PATH, L"%ws(", pAPI->Name);
 
     // Pre Hooking.
-    PreHookTraceAPI_x64(szLog, pAPI, &CallerStackFrame, pContext);
+    PreHookTraceAPI_x64(szLog, pAPI, CallerStackFrame, pContext);
 
     // Finally perform the call.
     RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, CallerStackFrame);
 
     // Log Post Hooking.
-    PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue);
+    PostHookTraceAPI(pAPI, CallerStackFrame, szLog, RetValue, pContext);
 
     LogMessage(L"%ws\n", szLog);
     TrueRtlFreeHeap(RtlProcessHeap(), 0, szLog);

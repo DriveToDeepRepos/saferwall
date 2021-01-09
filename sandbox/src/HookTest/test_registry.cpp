@@ -14,6 +14,8 @@ OpenRegistryKey(PWCHAR pSubKey)
     {
 		PrintError("RegOpenKey");
     }
+
+	RegCloseKey(hkResult);
 }
 
 HKEY
@@ -36,9 +38,10 @@ CreateRegistryKey(PWCHAR pSubKey)
 VOID
 WriteRegistryKey(HKEY hKey, PWCHAR pSubKey, PWCHAR pValueName, PWCHAR strData)
 {
-    DWORD dwRet;
+    DWORD dwRet, cbData;
 
-    dwRet = RegSetValueEx(hKey, pValueName, 0, REG_SZ, (LPBYTE)(strData), ((((DWORD)lstrlen(strData) + 1)) * 2));
+	cbData = (wcslen(strData) + 1) * sizeof(WCHAR);
+    dwRet = RegSetValueEx(hKey, pValueName, 0, REG_SZ, (LPBYTE)(strData), cbData);
     if (ERROR_SUCCESS != dwRet)
     {
 		PrintError("RegSetValueEx");

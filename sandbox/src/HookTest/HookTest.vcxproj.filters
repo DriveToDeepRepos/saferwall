@@ -51,10 +51,10 @@
     <ClCompile Include="test_heap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="test_synch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="test_synch.cpp">
+    <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
