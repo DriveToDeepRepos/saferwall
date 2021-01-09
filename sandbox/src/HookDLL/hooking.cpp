@@ -744,56 +744,8 @@ extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR Target)
     return pAPI;
 }
 
-extern "C" __declspec(noinline) PWCHAR WINAPI PreHookTraceAPI(PWCHAR szLog, PAPI pAPI, DWORD_PTR *BasePointer)
-{
-    INT len = 0;
-    PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
-    BOOL bFound = TRUE;
-
-    for (int i = 0; i < pAPI->cParams; i++)
-    {
-        DWORD_PTR Param = *(DWORD_PTR *)(BasePointer + i);
-        switch (pAPI->Parameters[i].Annotation)
-        {
-        case PARAM_IN:
-        case PARAM_IN_OUT:
-            switch (pAPI->Parameters[i].Type)
-            {
-            case PARAM_IMM:
-                _snwprintf(szBuff, MAX_PATH, L"%s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
-                break;
-            case PARAM_PTR_IMM:
-                _snwprintf(szBuff, sizeof(szBuff), L"%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, *(DWORD_PTR *)Param);
-                break;
-            case PARAM_ASCII_STR:
-                _snwprintf(szBuff, MAX_PATH, L"%s:%s, ", (PCHAR)pAPI->Parameters[i].Name, (PCHAR)Param);
-                break;
-            case PARAM_WIDE_STR:
-                _snwprintf(szBuff, MAX_PATH, L"%s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
-                break;
-            case PARAM_PTR_STRUCT:
-                _snwprintf(szBuff, MAX_PATH, L"%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, Param);
-                break;
-            default:
-                LogMessage(L"Unknown");
-                bFound = FALSE;
-                break;
-            }
-
-            if (bFound)
-            {
-                _wcsncat(szLog, szBuff, _wcslen(szBuff));
-                RtlZeroMemory(szBuff, _wcslen(szBuff));
-            }
-        }
-    }
-
-    TrueRtlFreeHeap(RtlProcessHeap(), 0, szBuff);
-    return szLog;
-}
-
 extern "C" __declspec(noinline) PWCHAR WINAPI
-    PreHookTraceAPI_x64(PWCHAR szLog, PAPI pAPI, DWORD_PTR BasePointer, PCONTEXT pContext)
+    PreHookTraceAPI(PWCHAR szLog, PAPI pAPI, DWORD_PTR BasePointer, PCONTEXT pContext)
 {
     INT len = 0;
     PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
@@ -872,6 +824,12 @@ __declspec(noinline) PWCHAR WINAPI PostHookTraceAPI(PAPI pAPI, DWORD_PTR BasePoi
     PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
     BOOL bFound = TRUE;
     DWORD_PTR Param;
+    UINT_PTR ucb = 4;
+
+#ifdef _WIN64
+    ucb = 8;
+#endif
+
 
 	//
 	// Iterate over parameteres 
@@ -897,7 +855,7 @@ __declspec(noinline) PWCHAR WINAPI PostHookTraceAPI(PAPI pAPI, DWORD_PTR BasePoi
             break;
         }
 #else
-        Param = *(DWORD_PTR *)(BasePointer + i);
+        Param = *((DWORD_PTR *)BasePointer + i);
 #endif
 
 		switch (pAPI->Parameters[i].Annotation)
@@ -910,7 +868,7 @@ __declspec(noinline) PWCHAR WINAPI PostHookTraceAPI(PAPI pAPI, DWORD_PTR BasePoi
 				_snwprintf(szBuff, MAX_PATH, L"out: %s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
 				break;
 			case PARAM_PTR_IMM:
-				if (!IsBadReadPtr((intptr_t *)Param, 8))
+                if (!IsBadReadPtr((intptr_t *)Param, ucb))
 					Param = *(DWORD_PTR *)Param;
 				_snwprintf(szBuff, MAX_PATH, L"out: %s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
 				break;
@@ -984,13 +942,13 @@ GenericHookHandler(DWORD_PTR RealTarget, DWORD_PTR ReturnAddress, DWORD_PTR Call
     _snwprintf(szLog, MAX_PATH, L"%ws(", pAPI->Name);
 
     // Pre Hooking.
-    PreHookTraceAPI(szLog, pAPI, &CallerStackFrame);
+    PreHookTraceAPI(szLog, pAPI, (DWORD_PTR)&CallerStackFrame, NULL);
 
     // Finally perform the call.
     DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
 
     // Log Post Hooking.
-    PostHookTraceAPI(pAPI, &CallerStackFrame, szLog, RetValue, NULL);
+    PostHookTraceAPI(pAPI, (DWORD_PTR)&CallerStackFrame, szLog, RetValue, NULL);
 
     LogMessage(L"%ws\n", szLog);
     TrueRtlFreeHeap(RtlProcessHeap(), 0, szLog);
@@ -1035,7 +993,7 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
     _snwprintf(szLog, MAX_PATH, L"%ws(", pAPI->Name);
 
     // Pre Hooking.
-    PreHookTraceAPI_x64(szLog, pAPI, CallerStackFrame, pContext);
+    PreHookTraceAPI(szLog, pAPI, CallerStackFrame, pContext);
 
     // Finally perform the call.
     RetValue = AsmCall_x64(pContext, pAPI->RealTarget, pAPI->cParams, CallerStackFrame);
