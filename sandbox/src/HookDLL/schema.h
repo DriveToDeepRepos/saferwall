@@ -22,9 +22,9 @@ typedef enum _PARAM_ANNOTATION
     // If used with _deref, the buffer may be reallocated by the function.
     PARAM_IN_OUT,
 
+	// Reserved.
     PARAM_RESERVED,
-} PARAM_ANNOTATION,
-    *PPARAM_ANNOTATION;
+} PARAM_ANNOTATION;
 
 typedef enum _PARAM_TYPE
 {

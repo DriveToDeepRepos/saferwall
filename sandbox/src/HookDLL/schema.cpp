@@ -22,7 +22,7 @@ SfwSchemaLoadAPIDef()
     // Read the file.
     //
 
-    WCHAR filename[] = L"C:\\coding\\safewall-sdkjson\\pkg\\sdk2json\\mini-apis.json";
+    WCHAR filename[] = L"C:\\coding\\safewall-sdkjson\\pkg\\sdk2json\\json\\mini-apis.json";
     PCHAR JSON_STRING = (CHAR *)SfwUtilReadFile(filename, &dwJsonLength);
     if (!JSON_STRING)
     {

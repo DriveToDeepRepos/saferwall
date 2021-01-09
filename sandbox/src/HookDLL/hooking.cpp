@@ -751,6 +751,11 @@ extern "C" __declspec(noinline) PWCHAR WINAPI
     PWCHAR szBuff = (PWCHAR)TrueRtlAllocateHeap(RtlProcessHeap(), HEAP_ZERO_MEMORY, MAX_PATH);
     BOOL bFound = TRUE;
     DWORD_PTR Param;
+    UINT_PTR ucb = 4;
+
+#ifdef _WIN64
+    ucb = 8;
+#endif
 
     for (int i = 0; i < pAPI->cParams; i++)
     {
@@ -787,7 +792,9 @@ extern "C" __declspec(noinline) PWCHAR WINAPI
                 _snwprintf(szBuff, MAX_PATH, L"%s:0x%x, ", (PCHAR)pAPI->Parameters[i].Name, Param);
                 break;
             case PARAM_PTR_IMM:
-                _snwprintf(szBuff, sizeof(szBuff), L"%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, *(DWORD_PTR *)Param);
+                if (!IsBadReadPtr((intptr_t *)Param, ucb))
+                    Param = *(DWORD_PTR *)Param;
+                _snwprintf(szBuff, MAX_PATH, L"%s:0x%d, ", (PCHAR)pAPI->Parameters[i].Name, Param);
                 break;
             case PARAM_ASCII_STR:
                 _snwprintf(szBuff, MAX_PATH, L"%s:%s, ", (PCHAR)pAPI->Parameters[i].Name, (PCHAR)Param);
@@ -795,11 +802,17 @@ extern "C" __declspec(noinline) PWCHAR WINAPI
             case PARAM_WIDE_STR:
                 _snwprintf(szBuff, MAX_PATH, L"%s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
                 break;
+            case PARAM_ARR_ASCII_STR:
+                _snwprintf(szBuff, MAX_PATH, L"%s:%s, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+                break;
+            case PARAM_ARR_WIDE_STR:
+                _snwprintf(szBuff, MAX_PATH, L"%s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+                break;
             case PARAM_PTR_STRUCT:
                 _snwprintf(szBuff, MAX_PATH, L"%s:%lu, ", (PCHAR)pAPI->Parameters[i].Name, Param);
                 break;
             default:
-                LogMessage(L"Unknown");
+                LogMessage(L"%s has an unknown type", (PCHAR)pAPI->Parameters[i].Name);
                 bFound = FALSE;
                 break;
             }
@@ -878,6 +891,12 @@ __declspec(noinline) PWCHAR WINAPI PostHookTraceAPI(PAPI pAPI, DWORD_PTR BasePoi
 			case PARAM_WIDE_STR:
 				_snwprintf(szBuff, MAX_PATH, L"out: %s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
 				break;
+            case PARAM_ARR_ASCII_STR:
+                _snwprintf(szBuff, MAX_PATH, L"%s:%s, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+                break;
+            case PARAM_ARR_WIDE_STR:
+                _snwprintf(szBuff, MAX_PATH, L"%s:%ws, ", (PCHAR)pAPI->Parameters[i].Name, (PWCHAR)Param);
+                break;
 			case PARAM_PTR_STRUCT:
 				_snwprintf(szBuff, MAX_PATH, L"out: %s:0x%p, ", (PCHAR)pAPI->Parameters[i].Name, (PVOID)Param);
 				break;
