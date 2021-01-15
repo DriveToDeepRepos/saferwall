@@ -712,17 +712,25 @@ extern "C" __declspec(noinline) BOOL WINAPI SfwIsCalledFromSystemMemory(DWORD_PT
 
     while (pEntry != pHeadEntry)
     {
-        // Retrieve the current LDR_DATA_TABLE_ENTRY
+		//
+        // Retrieve the current LDR_DATA_TABLE_ENTRY.
+		// 
+
         pLdrEntry = CONTAINING_RECORD(pEntry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
 
+		//
         // Exluce the main module code in the search.
+		//
+
         if (_wcscmp(pLdrEntry->FullDllName.Buffer, pPeb->ProcessParameters->ImagePathName.Buffer) == 0)
         {
             pEntry = pEntry->Flink;
             continue;
         }
 
-        // Fill the MODULE_ENTRY with the LDR_DATA_TABLE_ENTRY information
+		//
+        // Fill the MODULE_ENTRY with the LDR_DATA_TABLE_ENTRY information/
+		//
         if (ReturnAddress >= (ULONGLONG)pLdrEntry->DllBase &&
             ReturnAddress <= (ULONGLONG)pLdrEntry->DllBase + pLdrEntry->SizeOfImage)
         {
@@ -730,19 +738,16 @@ extern "C" __declspec(noinline) BOOL WINAPI SfwIsCalledFromSystemMemory(DWORD_PT
             break;
         }
 
+		//
         // Iterate to the next entry.
+		//
+
         pEntry = pEntry->Flink;
     }
 
     return bFound;
 }
 
-extern "C" __declspec(noinline) PAPI WINAPI GetTargetAPI(DWORD_PTR Target)
-{
-    PAPI pAPI = NULL;
-    pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)Target, 0);
-    return pAPI;
-}
 
 extern "C" __declspec(noinline) PWCHAR WINAPI
     PreHookTraceAPI(PWCHAR szLog, PAPI pAPI, DWORD_PTR BasePointer, PCONTEXT pContext)
@@ -939,7 +944,7 @@ GenericHookHandler(DWORD_PTR RealTarget, DWORD_PTR ReturnAddress, DWORD_PTR Call
     // Get the target API.
     //
 
-    PAPI pAPI = GetTargetAPI(RealTarget);
+	PAPI pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)RealTarget, 0);
     if (!pAPI)
     {
         LogMessage(L"Could not find API!\n");
@@ -961,7 +966,7 @@ GenericHookHandler(DWORD_PTR RealTarget, DWORD_PTR ReturnAddress, DWORD_PTR Call
     _snwprintf(szLog, MAX_PATH, L"%ws(", pAPI->Name);
 
     // Pre Hooking.
-    PreHookTraceAPI(szLog, pAPI, (DWORD_PTR)&CallerStackFrame, NULL);
+    TracPreHookeAPI(szLog, pAPI, (DWORD_PTR)&CallerStackFrame, NULL);
 
     // Finally perform the call.
     DWORD_PTR RetValue = AsmCall(pAPI->RealTarget, pAPI->cParams, &CallerStackFrame);
@@ -989,11 +994,11 @@ GenericHookHandler_x64(DWORD_PTR ReturnAddress, DWORD_PTR CallerStackFrame, PCON
     //
     // Get the target API.
     //
-    PAPI pAPI = GetTargetAPI(RealTarget);
+
+    PAPI pAPI = (PAPI)hashmap_get(pgHookContext->hashmapA, (PVOID)RealTarget, 0);
     if (!pAPI)
     {
         LogMessage(L"Could not find API!\n");
-        return;
     }
 
     // Are we called from inside a our own hook handler.
